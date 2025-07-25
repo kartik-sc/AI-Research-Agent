@@ -41,12 +41,12 @@ form.addEventListener('submit', async (e) => {
       body: JSON.stringify({ query: q })
     });
     const d = await res.json();
-    addCard('📄 Summary', d.summary);
-    addCard('🧠 Key Insights', d.insights, true);
-    addCard('❓ Open Questions', d.open_questions, true);
-    addCard('💡 Possible Hypotheses', d.possible_hypotheses, true);
-    addCard('🔑 Keywords', d.keywords, true);
-    addCard('📚 Citations', d.citations, true);
+    addCard('1. Summary', d.summary);
+    addCard('2. Key Insights', d.insights, true);
+    addCard('3. Open Questions', d.open_questions, true);
+    addCard('4. Possible Hypotheses', d.possible_hypotheses, true);
+    addCard('5. Keywords', d.keywords, true);
+    addCard('6. Citations', d.citations, true);
   } catch (err) {
     output.innerHTML = `<div class="card"><h2>Error</h2><p>${err.message}</p></div>`;
   }
