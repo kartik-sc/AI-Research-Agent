@@ -2,6 +2,9 @@ const form   = document.getElementById('query-form');
 const query  = document.getElementById('query');
 const output = document.getElementById('results');
 
+// Optional: Define API base as a constant for easier maintenance
+const API_BASE = '/api';  // Use relative path for Vercel; change to 'http://localhost:8000' for local testing
+
 function addCard(title, items, isList = false) {
   if (!items || items.length === 0) return;
   const card = document.createElement('div');
@@ -35,11 +38,14 @@ form.addEventListener('submit', async (e) => {
   output.classList.remove('hidden');
 
   try {
-    const res = await fetch('http://localhost:8000/search', {
+    const res = await fetch(`${API_BASE}/search`, {  // Changed from http://localhost:8000/search
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query: q })
     });
+    if (!res.ok) {
+      throw new Error(`HTTP error! Status: ${res.status}`);
+    }
     const d = await res.json();
     addCard('1. Summary', d.summary);
     addCard('2. Key Insights', d.insights, true);
