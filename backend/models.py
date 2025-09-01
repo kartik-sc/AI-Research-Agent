@@ -1,5 +1,4 @@
 from pydantic import BaseModel
-from models import SearchRequest, SearchResponse
 from typing import List, Optional
 
 class Citation(BaseModel):
