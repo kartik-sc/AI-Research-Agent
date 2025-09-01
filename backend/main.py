@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from models import SearchRequest, SearchResponse
+from .models import SearchRequest, SearchResponse
 import google.generativeai as genai
 import os
 import json
