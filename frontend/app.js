@@ -2,14 +2,18 @@ const form   = document.getElementById('query-form');
 const query  = document.getElementById('query');
 const output = document.getElementById('results');
 
-// Optional: Define API base as a constant for easier maintenance
-const API_BASE = '/api';  // Use relative path for Vercel; change to 'http://localhost:8000' for local testing
+// Determine API base URL
+const API_BASE = window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1') 
+  ? 'http://localhost:8000' 
+  : '';  // For production (Vercel/Netlify)
 
 function addCard(title, items, isList = false) {
   if (!items || items.length === 0) return;
+
   const card = document.createElement('div');
   card.className = 'card';
   card.innerHTML = `<h2>${title}</h2>`;
+
   if (isList) {
     const ul = document.createElement('ul');
     items.forEach(i => {
@@ -27,32 +31,39 @@ function addCard(title, items, isList = false) {
     p.textContent = items;
     card.appendChild(p);
   }
+
   output.appendChild(card);
 }
 
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
+
   const q = query.value.trim();
   if (!q) return;
+
   output.innerHTML = '';
   output.classList.remove('hidden');
 
   try {
-    const res = await fetch(`${API_BASE}/search`, {  // Changed from http://localhost:8000/search
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: q })
-    });
-    if (!res.ok) {
-      throw new Error(`HTTP error! Status: ${res.status}`);
-    }
+    const res = await fetch(`${API_BASE}/api/search`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ query: q })
+});
+
+if (!res.ok) {
+      throw new Error(`HTTP error ${res.status}`);
+ }
+
     const d = await res.json();
+
     addCard('1. Summary', d.summary);
     addCard('2. Key Insights', d.insights, true);
     addCard('3. Open Questions', d.open_questions, true);
     addCard('4. Possible Hypotheses', d.possible_hypotheses, true);
     addCard('5. Keywords', d.keywords, true);
     addCard('6. Citations', d.citations, true);
+
   } catch (err) {
     output.innerHTML = `<div class="card"><h2>Error</h2><p>${err.message}</p></div>`;
   }
