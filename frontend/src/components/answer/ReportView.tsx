@@ -2,126 +2,119 @@
 
 import ReactMarkdown from "react-markdown";
 import { motion } from "framer-motion";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { ResearchResult } from "@/lib/types";
+import type { ResearchResponse } from "@/lib/types";
 
 interface ReportViewProps {
-  result: ResearchResult | null;
+  query: string;
+  mode: string;
+  response: ResearchResponse | null;
   isLoading: boolean;
 }
 
-export function ReportView({ result, isLoading }: ReportViewProps) {
+export function ReportView({ query, mode, response, isLoading }: ReportViewProps) {
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        <Skeleton className="h-6 w-48" />
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-5/6" />
-        <Skeleton className="h-4 w-4/5" />
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-3/4" />
+      <div className="space-y-5">
+        <Skeleton className="h-5 w-56" />
+        <Skeleton className="h-3.5 w-full" />
+        <Skeleton className="h-3.5 w-5/6" />
+        <Skeleton className="h-3.5 w-full" />
+        <Skeleton className="h-3.5 w-4/5" />
+        <div className="pt-2">
+          <Skeleton className="h-4 w-32" />
+        </div>
+        <Skeleton className="h-3.5 w-full" />
+        <Skeleton className="h-3.5 w-3/4" />
+        <Skeleton className="h-3.5 w-full" />
       </div>
     );
   }
 
-  if (!result) return null;
-
-  const confidence = Math.round(result.confidence_score * 100);
+  if (!response) return null;
 
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      transition={{ duration: 0.4 }}
-      className="flex flex-col gap-4"
+      transition={{ duration: 0.35 }}
+      className="flex flex-col gap-5"
     >
-      <div className="flex flex-wrap items-center gap-2">
-        <h2 className="flex-1 text-base font-semibold leading-snug">
-          {result.query}
-        </h2>
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="text-xs capitalize">
-            {result.mode}
-          </Badge>
-          <Badge
-            variant="outline"
-            className={`text-xs ${
-              confidence >= 80
-                ? "border-emerald-500/30 text-emerald-400"
-                : confidence >= 60
-                ? "border-yellow-500/30 text-yellow-400"
-                : "border-red-500/30 text-red-400"
-            }`}
-          >
-            {confidence}% confidence
-          </Badge>
-        </div>
+      {/* Query header */}
+      <div className="flex flex-wrap items-start gap-2">
+        <h2 className="flex-1 text-base font-semibold leading-snug">{query}</h2>
+        <span className="rounded-full border border-border px-2.5 py-0.5 text-[11px] font-medium capitalize text-muted-foreground">
+          {mode}
+        </span>
       </div>
 
-      {result.plan && (
-        <div className="rounded-md bg-muted/40 p-3">
-          <p className="mb-1.5 text-xs font-medium text-muted-foreground">
-            Research plan · {result.plan.sub_queries.length} sub-queries
-          </p>
-          <div className="flex flex-wrap gap-1.5">
-            {result.plan.sub_queries.map((q, i) => (
-              <span
-                key={i}
-                className="rounded bg-background px-2 py-0.5 text-xs text-foreground"
-              >
-                {q}
-              </span>
-            ))}
-          </div>
+      {/* Sub-question pills */}
+      {response.sub_questions.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {response.sub_questions.map((q, i) => (
+            <span
+              key={i}
+              className="rounded-full bg-muted/60 px-2.5 py-1 text-[11px] text-muted-foreground"
+            >
+              {q}
+            </span>
+          ))}
         </div>
       )}
 
-      <article className="max-w-none text-sm leading-relaxed">
+      {/* Report body */}
+      <article className="max-w-none text-sm leading-7">
         <ReactMarkdown
           components={{
             h1: ({ children }) => (
-              <h1 className="mb-3 mt-6 text-xl font-bold">{children}</h1>
+              <h1 className="mb-3 mt-8 text-xl font-bold tracking-tight">{children}</h1>
             ),
             h2: ({ children }) => (
-              <h2 className="mb-3 mt-6 border-b border-border pb-1 text-lg font-semibold">
+              <h2 className="mb-3 mt-7 border-b border-border pb-1.5 text-base font-semibold tracking-tight">
                 {children}
               </h2>
             ),
             h3: ({ children }) => (
-              <h3 className="mb-2 mt-5 text-base font-semibold">{children}</h3>
+              <h3 className="mb-2 mt-5 text-sm font-semibold">{children}</h3>
             ),
             p: ({ children }) => (
-              <p className="mb-3 text-foreground">{children}</p>
+              <p className="mb-4 text-foreground/90">{children}</p>
             ),
             a: ({ href, children }) => (
               <a
                 href={href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-primary underline underline-offset-2 hover:no-underline"
+                className="text-primary underline underline-offset-2 transition-opacity hover:opacity-70"
               >
                 {children}
               </a>
             ),
             code: ({ children }) => (
-              <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">
+              <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[12px]">
                 {children}
               </code>
             ),
             ul: ({ children }) => (
-              <ul className="mb-3 ml-4 list-disc space-y-1">{children}</ul>
+              <ul className="mb-4 ml-5 list-disc space-y-1.5">{children}</ul>
             ),
             ol: ({ children }) => (
-              <ol className="mb-3 ml-4 list-decimal space-y-1">{children}</ol>
+              <ol className="mb-4 ml-5 list-decimal space-y-1.5">{children}</ol>
             ),
-            li: ({ children }) => <li className="text-foreground">{children}</li>,
+            li: ({ children }) => (
+              <li className="text-foreground/90">{children}</li>
+            ),
             strong: ({ children }) => (
               <strong className="font-semibold text-foreground">{children}</strong>
             ),
+            blockquote: ({ children }) => (
+              <blockquote className="mb-4 border-l-2 border-border pl-4 text-muted-foreground">
+                {children}
+              </blockquote>
+            ),
           }}
         >
-          {result.report}
+          {response.report}
         </ReactMarkdown>
       </article>
     </motion.div>

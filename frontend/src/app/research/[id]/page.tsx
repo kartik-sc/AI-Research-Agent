@@ -1,16 +1,16 @@
 import { notFound } from "next/navigation";
 import { ReportView } from "@/components/answer/ReportView";
 import { SourceList } from "@/components/sources/SourceList";
-import type { ResearchResult } from "@/lib/types";
+import type { ResearchResponse } from "@/lib/types";
 
 interface PageProps {
   params: Promise<{ id: string }>;
 }
 
-async function fetchResult(id: string): Promise<ResearchResult | null> {
+async function fetchResult(id: string): Promise<ResearchResponse | null> {
   const base = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
   try {
-    const res = await fetch(`${base}/api/research/${id}`, {
+    const res = await fetch(`${base}/api/research/${id}/result`, {
       cache: "no-store",
     });
     if (!res.ok) return null;
@@ -27,15 +27,18 @@ export default async function ResearchPage({ params }: PageProps) {
   if (!result) notFound();
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      <main className="flex flex-1 overflow-hidden">
-        <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-6">
-          <ReportView result={result} isLoading={false} />
-        </div>
-        <div className="w-72 overflow-y-auto border-l border-border p-4">
-          <SourceList sources={result.sources} isLoading={false} />
-        </div>
-      </main>
+    <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-6">
+        <ReportView
+          query={result.session_id}
+          mode=""
+          response={result}
+          isLoading={false}
+        />
+      </div>
+      <div className="w-80 flex-shrink-0 overflow-y-auto border-l border-border p-4">
+        <SourceList sources={result.sources} isLoading={false} />
+      </div>
     </div>
   );
 }

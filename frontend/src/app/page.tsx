@@ -1,178 +1,155 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
-import { Sidebar } from "@/components/sidebar/Sidebar";
-import { SearchBar } from "@/components/search/SearchBar";
+import { motion, AnimatePresence } from "framer-motion";
+import { HeroSearch, CompactSearch } from "@/components/search/SearchBar";
 import { AgentStream } from "@/components/agent-stream/AgentStream";
-import { ReportView } from "@/components/answer/ReportView";
-import { SourceList } from "@/components/sources/SourceList";
+import { ReportHeader } from "@/components/answer/ReportHeader";
+import { ReportRenderer } from "@/components/answer/ReportRenderer";
+import { FollowUpSuggestions } from "@/components/answer/FollowUpSuggestions";
+import { SourcesPanel } from "@/components/sources/SourcesPanel";
 import { KnowledgeGraph } from "@/components/knowledge-graph/KnowledgeGraph";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Separator } from "@/components/ui/separator";
-import { startResearch, streamResearch, getResult, listSessions } from "@/lib/api";
-import type {
-  AgentEvent,
-  ResearchMode,
-  ResearchResult,
-  ResearchStatus,
-  SessionSummary,
-} from "@/lib/types";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { useResearchStore } from "@/lib/store";
 
 export default function Home() {
-  const [status, setStatus] = useState<ResearchStatus>("idle");
-  const [events, setEvents] = useState<AgentEvent[]>([]);
-  const [result, setResult] = useState<ResearchResult | null>(null);
-  const [sessions, setSessions] = useState<SessionSummary[]>([]);
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const { status, agentEvents, response } = useResearchStore();
 
-  useEffect(() => {
-    listSessions()
-      .then(setSessions)
-      .catch(() => {});
-  }, []);
-
-  const handleSearch = useCallback(async (query: string, mode: ResearchMode) => {
-    setStatus("running");
-    setEvents([]);
-    setResult(null);
-
-    try {
-      const { session_id } = await startResearch({ query, mode });
-      setActiveSessionId(session_id);
-
-      const cleanup = streamResearch(
-        session_id,
-        (event) => setEvents((prev) => [...prev, event]),
-        async () => {
-          setStatus("complete");
-          const res = await getResult(session_id);
-          setResult(res);
-          const updatedSessions = await listSessions();
-          setSessions(updatedSessions);
-        },
-        (msg) => {
-          setStatus("error");
-          setEvents((prev) => [
-            ...prev,
-            {
-              event_type: "error",
-              agent: "system",
-              message: msg,
-              timestamp: new Date().toISOString(),
-            },
-          ]);
-        }
-      );
-
-      return cleanup;
-    } catch (err) {
-      setStatus("error");
-      setEvents([
-        {
-          event_type: "error",
-          agent: "system",
-          message: err instanceof Error ? err.message : "Failed to start research",
-          timestamp: new Date().toISOString(),
-        },
-      ]);
-    }
-  }, []);
-
-  const handleSessionSelect = useCallback(async (id: string) => {
-    setActiveSessionId(id);
-    setStatus("complete");
-    setEvents([]);
-    try {
-      const res = await getResult(id);
-      setResult(res);
-    } catch {
-      setResult(null);
-    }
-  }, []);
-
-  const handleSessionDelete = useCallback((id: string) => {
-    setSessions((prev) => prev.filter((s) => s.session_id !== id));
-    if (activeSessionId === id) {
-      setActiveSessionId(null);
-      setResult(null);
-      setStatus("idle");
-    }
-  }, [activeSessionId]);
-
-  const isLoading = status === "running";
+  const isIdle = status === "idle";
+  const isRunning = status === "running";
+  const isComplete = status === "complete";
+  const sourceCount = response?.sources.length ?? 0;
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      <Sidebar
-        sessions={sessions}
-        activeSessionId={activeSessionId}
-        onSessionSelect={handleSessionSelect}
-        onSessionDelete={handleSessionDelete}
-      />
+    <div className="flex h-full flex-col overflow-hidden">
+      <AnimatePresence mode="wait">
 
-      <main className="flex flex-1 flex-col overflow-hidden">
-        {/* Top bar */}
-        <div className="flex items-center justify-center border-b border-border px-6 py-4">
-          <SearchBar onSubmit={handleSearch} isLoading={isLoading} />
-        </div>
+        {/* ── STATE 1: Idle — centered hero ─────────────────────── */}
+        {isIdle && (
+          <motion.div
+            key="hero"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -16 }}
+            transition={{ duration: 0.25 }}
+            className="flex flex-1 items-center justify-center p-8"
+          >
+            <HeroSearch />
+          </motion.div>
+        )}
 
-        {/* Content area */}
-        <div className="flex flex-1 overflow-hidden">
-          {status === "idle" && (
-            <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
-              <p className="text-2xl font-semibold tracking-tight">ResearchOS</p>
-              <p className="max-w-sm text-sm text-muted-foreground">
-                Enter a research question above. Choose a mode, then let the
-                multi-agent pipeline plan, retrieve, verify, and write your report.
-              </p>
-            </div>
-          )}
+        {/* ── STATE 2 + 3: Active research ──────────────────────── */}
+        {!isIdle && (
+          <motion.div
+            key="active"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.2 }}
+            className="flex flex-1 flex-col overflow-hidden"
+          >
+            <CompactSearch />
 
-          {status !== "idle" && (
             <div className="flex flex-1 overflow-hidden">
-              {/* Main content */}
-              <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-6">
-                {(isLoading || events.length > 0) && (
-                  <AgentStream events={events} isRunning={isLoading} />
-                )}
 
-                {(status === "complete" || status === "error") && result && (
-                  <Tabs defaultValue="report">
-                    <TabsList className="mb-4">
-                      <TabsTrigger value="report">Report</TabsTrigger>
-                      <TabsTrigger value="graph">
-                        Knowledge Graph
-                      </TabsTrigger>
-                    </TabsList>
+              {/* Left: main content */}
+              <div className="flex flex-1 flex-col overflow-y-auto">
+                <div className="flex flex-col gap-5 px-5 py-5 md:px-8">
 
-                    <TabsContent value="report">
-                      <ReportView result={result} isLoading={false} />
-                    </TabsContent>
+                  {/* Agent stream */}
+                  <AgentStream
+                    events={agentEvents}
+                    isRunning={isRunning}
+                    sourceCount={sourceCount}
+                  />
 
-                    <TabsContent value="graph">
-                      <KnowledgeGraph
-                        sources={result.sources}
-                        query={result.query}
+                  {/* Loading skeleton while streaming */}
+                  {isRunning && (
+                    <div className="space-y-4 pt-2">
+                      {[100, 85, 93, 70, 100, 60].map((w, i) => (
+                        <div
+                          key={i}
+                          className="h-3 animate-pulse rounded-full bg-muted"
+                          style={{ width: `${w}%` }}
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Tabbed content when complete */}
+                  {isComplete && response && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <Tabs defaultValue="report">
+                        <TabsList className="mb-4">
+                          <TabsTrigger value="report">Report</TabsTrigger>
+                          <TabsTrigger value="graph">Knowledge Graph</TabsTrigger>
+                          <TabsTrigger value="timeline">Timeline</TabsTrigger>
+                        </TabsList>
+
+                        <TabsContent value="report">
+                          <ReportHeader markdown={response.report} />
+                          <ReportRenderer
+                            markdown={response.report}
+                            sources={response.sources}
+                          />
+                        </TabsContent>
+
+                        <TabsContent value="graph">
+                          <KnowledgeGraph
+                            nodes={response.knowledge_nodes}
+                            edges={response.knowledge_edges ?? []}
+                          />
+                        </TabsContent>
+
+                        <TabsContent value="timeline">
+                          <div className="flex h-64 items-center justify-center rounded-xl border border-border">
+                            <p className="text-sm text-muted-foreground">
+                              Timeline view — coming next sprint
+                            </p>
+                          </div>
+                        </TabsContent>
+                      </Tabs>
+
+                      <FollowUpSuggestions suggestions={response.sub_questions} />
+                    </motion.div>
+                  )}
+
+                  {/* Sources on mobile (below content) */}
+                  {(isRunning || isComplete) && (
+                    <div className="block md:hidden border-t border-border pt-5">
+                      <SourcesPanel
+                        sources={response?.sources ?? []}
+                        isLoading={isRunning}
                       />
-                    </TabsContent>
-                  </Tabs>
-                )}
-
-                {isLoading && <ReportView result={null} isLoading />}
+                    </div>
+                  )}
+                </div>
               </div>
 
-              {/* Sources panel */}
-              <Separator orientation="vertical" />
-              <div className="w-72 overflow-y-auto p-4">
-                <SourceList
-                  sources={result?.sources ?? []}
-                  isLoading={isLoading}
-                />
-              </div>
+              {/* Right: sources panel (desktop only) */}
+              {(isRunning || isComplete) && (
+                <motion.div
+                  initial={{ opacity: 0, x: 16 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.28 }}
+                  className="hidden md:flex w-[340px] xl:w-[380px] flex-shrink-0 flex-col overflow-hidden border-l border-border"
+                >
+                  <div className="flex-1 overflow-hidden p-4">
+                    <SourcesPanel
+                      sources={response?.sources ?? []}
+                      isLoading={isRunning}
+                    />
+                  </div>
+                </motion.div>
+              )}
+
             </div>
-          )}
-        </div>
-      </main>
+          </motion.div>
+        )}
+
+      </AnimatePresence>
     </div>
   );
 }

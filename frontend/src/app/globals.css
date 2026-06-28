@@ -48,6 +48,16 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+@keyframes highlight-flash {
+  0%   { border-color: rgba(251,191,36,0.8); box-shadow: 0 0 0 3px rgba(251,191,36,0.2); }
+  60%  { border-color: rgba(251,191,36,0.5); box-shadow: 0 0 0 2px rgba(251,191,36,0.1); }
+  100% { border-color: transparent; box-shadow: none; }
+}
+
+.animate-highlight {
+  animation: highlight-flash 1.2s ease-out forwards;
+}
+
 :root {
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);

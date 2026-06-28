@@ -28,7 +28,7 @@ export function SourceList({ sources, isLoading }: SourceListProps) {
       <p className="mb-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
         Sources · {sources.length}
       </p>
-      <ScrollArea className="h-[600px]">
+      <ScrollArea className="h-full">
         <div className="space-y-2 pr-2">
           {sources.map((source, i) => (
             <SourceCard key={source.url} source={source} index={i + 1} />
