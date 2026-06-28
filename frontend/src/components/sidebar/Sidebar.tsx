@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useTheme } from "next-themes";
 import useSWR, { mutate as globalMutate } from "swr";
@@ -57,12 +57,15 @@ export function Sidebar() {
   const { theme, setTheme } = useTheme();
   const { resetResearch } = useResearchStore();
 
+  const [mounted, setMounted] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [color, setColor] = useState(PRESET_COLORS[0]);
   const [icon, setIcon] = useState("folder");
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => { setMounted(true); }, []);
 
   const { data: projects } = useSWR<ProjectSummary[]>("/api/projects", swrFetcher);
 
@@ -283,12 +286,12 @@ export function Sidebar() {
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
           className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         >
-          {theme === "dark" ? (
+          {mounted && (theme === "dark" ? (
             <Sun className="h-3.5 w-3.5" />
           ) : (
             <Moon className="h-3.5 w-3.5" />
-          )}
-          {theme === "dark" ? "Light mode" : "Dark mode"}
+          ))}
+          {mounted ? (theme === "dark" ? "Light mode" : "Dark mode") : "Toggle theme"}
         </button>
       </div>
     </aside>
