@@ -12,6 +12,7 @@ export interface Source {
   trust_score: number;
   published_date: string | null;
   source_type: string;
+  metadata?: Record<string, unknown> | null;
 }
 
 export interface AgentEvent {

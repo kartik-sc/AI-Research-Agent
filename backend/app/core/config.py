@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     google_api_key: str = ""
     tavily_api_key: str = ""
     exa_api_key: str = ""
+    github_token: str = ""  # Optional — avoids GitHub API rate limits (60 req/hr unauth)
 
     # Model routing
     planner_model: str = "gemini-1.5-pro"

@@ -12,6 +12,7 @@ class Source(BaseModel):
     trust_score: float = Field(default=0.5, ge=0.0, le=1.0)
     published_date: str | None = None
     source_type: str = "web"
+    metadata: dict | None = None  # Structured data for GitHub / HuggingFace cards
 
 
 class AgentEvent(BaseModel):

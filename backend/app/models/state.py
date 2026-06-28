@@ -12,6 +12,7 @@ class ResearchState(TypedDict):
 
     # Filled by Planner
     sub_questions: list[str]
+    topic_flags: NotRequired[dict]  # TopicFlags as dict — avoids circular import
 
     # Per-researcher field — injected by Send(), absent in main state
     sub_question: NotRequired[str]

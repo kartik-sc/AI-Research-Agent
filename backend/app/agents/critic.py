@@ -15,6 +15,10 @@ _MAJOR_NEWS = {
     "nytimes.com", "wsj.com", "ft.com", "economist.com", "bloomberg.com",
     "wired.com", "techcrunch.com", "arstechnica.com",
 }
+_TECHNICAL = {
+    "github.com", "huggingface.co", "pypi.org", "npmjs.com",
+    "docs.python.org", "developer.mozilla.org", "pytorch.org", "tensorflow.org",
+}
 _BLOGS = {
     "medium.com", "substack.com", "blogger.com", "wordpress.com",
     "dev.to", "hashnode.com", "ghost.io", "tumblr.com",
@@ -31,12 +35,16 @@ def _extract_domain(url: str) -> str:
 
 def _score(url: str, source_type: str) -> float:
     domain = _extract_domain(url)
+    if source_type in ("github", "huggingface"):
+        return 0.82
     if source_type == "academic" or domain in _ACADEMIC:
         return 0.92
     if domain.endswith((".edu", ".gov", ".ac.uk", ".ac.jp")):
         return 0.88
     if domain in _MAJOR_NEWS:
         return 0.75
+    if domain in _TECHNICAL:
+        return 0.78
     if domain in _BLOGS:
         return 0.50
     return 0.42
@@ -88,8 +96,9 @@ async def run_critic(state: ResearchState) -> dict:
                 domain=_extract_domain(url),
                 snippet=(r.get("content") or r.get("snippet", ""))[:400],
                 trust_score=r["trust_score"],
-                published_date=r.get("published_date") or r.get("snippet", "")[:10] or None,
+                published_date=r.get("published_date") or None,
                 source_type=r.get("source_type", "web"),
+                metadata=r.get("metadata"),
             )
         )
 

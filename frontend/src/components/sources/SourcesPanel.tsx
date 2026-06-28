@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
+import { GitHubCard } from "./GitHubCard";
+import { HuggingFaceCard } from "./HuggingFaceCard";
 import { SourceCard } from "./SourceCard";
 import type { Source } from "@/lib/types";
 
@@ -12,11 +14,12 @@ interface SourcesPanelProps {
 }
 
 const FILTER_OPTIONS = [
-  { key: "all",      label: "All" },
-  { key: "web",      label: "Web" },
-  { key: "academic", label: "Academic" },
-  { key: "github",   label: "GitHub" },
-  { key: "news",     label: "News" },
+  { key: "all",         label: "All" },
+  { key: "web",         label: "Web" },
+  { key: "academic",    label: "Academic" },
+  { key: "github",      label: "GitHub" },
+  { key: "huggingface", label: "Models" },
+  { key: "news",        label: "News" },
 ] as const;
 
 type FilterKey = typeof FILTER_OPTIONS[number]["key"];
@@ -34,7 +37,7 @@ export function SourcesPanel({ sources, isLoading }: SourcesPanelProps) {
       <div className="space-y-3">
         <Skeleton className="h-5 w-24" />
         <div className="flex gap-1.5">
-          {Array.from({ length: 4 }).map((_, i) => (
+          {Array.from({ length: 5 }).map((_, i) => (
             <Skeleton key={i} className="h-6 w-14 rounded-full" />
           ))}
         </div>
@@ -56,10 +59,10 @@ export function SourcesPanel({ sources, isLoading }: SourcesPanelProps) {
         </p>
       </div>
 
-      {/* Filter chips */}
+      {/* Filter chips — only show filters that have matching sources */}
       <div className="flex flex-wrap gap-1.5">
-        {FILTER_OPTIONS.filter(({ key }) =>
-          key === "all" || sources.some((s) => s.source_type === key)
+        {FILTER_OPTIONS.filter(
+          ({ key }) => key === "all" || sources.some((s) => s.source_type === key)
         ).map(({ key, label }) => (
           <button
             key={key}
@@ -84,14 +87,20 @@ export function SourcesPanel({ sources, isLoading }: SourcesPanelProps) {
             </p>
           ) : (
             filtered.map((source) => {
-              // Preserve original 1-based index for citation matching
               const originalIndex = sources.indexOf(source) + 1;
+
+              if (source.source_type === "github") {
+                return (
+                  <GitHubCard key={source.url} source={source} index={originalIndex} />
+                );
+              }
+              if (source.source_type === "huggingface") {
+                return (
+                  <HuggingFaceCard key={source.url} source={source} index={originalIndex} />
+                );
+              }
               return (
-                <SourceCard
-                  key={source.url}
-                  source={source}
-                  index={originalIndex}
-                />
+                <SourceCard key={source.url} source={source} index={originalIndex} />
               );
             })
           )}

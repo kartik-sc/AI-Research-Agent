@@ -2,9 +2,8 @@ import json
 from urllib.parse import urlparse
 
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_google_genai import ChatGoogleGenerativeAI
 
-from app.core.config import settings
+from app.core.models import ModelRouter
 from app.core.redis_client import push_event
 from app.models.schemas import AgentEvent, KnowledgeEdge, KnowledgeNode, Source
 from app.models.state import ResearchState
@@ -78,6 +77,7 @@ def _build_quick_sources(search_results: list[dict]) -> list[Source]:
                 trust_score=r.get("score", 0.5),
                 published_date=r.get("published_date"),
                 source_type=r.get("source_type", "web"),
+                metadata=r.get("metadata"),
             )
         )
     return sources
@@ -85,15 +85,14 @@ def _build_quick_sources(search_results: list[dict]) -> list[Source]:
 
 async def _extract_knowledge_graph(
     report: str,
-    llm: ChatGoogleGenerativeAI,
+    router: ModelRouter,
 ) -> tuple[list[KnowledgeNode], list[KnowledgeEdge]]:
     try:
-        response = await llm.ainvoke([
-            SystemMessage(content=_GRAPH_SYSTEM),
-            HumanMessage(content=f"Research report:\n\n{report[:6000]}"),
-        ])
-        raw = response.content.strip()
-        # Strip markdown code fences if present
+        raw = await router.call(
+            "entity_extraction",
+            [SystemMessage(content=_GRAPH_SYSTEM), HumanMessage(content=f"Research report:\n\n{report[:6000]}")],
+            temperature=0.1,
+        )
         if raw.startswith("```"):
             parts = raw.split("```")
             raw = parts[1] if len(parts) > 1 else raw
@@ -128,6 +127,7 @@ async def _extract_knowledge_graph(
 
 async def run_writer(state: ResearchState) -> dict:
     query = state["query"]
+    mode = state["mode"]
     session_id = state["session_id"]
     sub_questions = state.get("sub_questions") or [query]
     sources: list[Source] = list(state.get("sources") or [])
@@ -144,16 +144,7 @@ async def run_writer(state: ResearchState) -> dict:
     events.append(thinking)
     await push_event(session_id, thinking.model_dump(mode="json"))
 
-    writer_llm = ChatGoogleGenerativeAI(
-        model=settings.planner_model,
-        google_api_key=settings.google_api_key,
-        temperature=0.3,
-    )
-    extractor_llm = ChatGoogleGenerativeAI(
-        model=settings.researcher_model,
-        google_api_key=settings.google_api_key,
-        temperature=0.1,
-    )
+    router = ModelRouter(mode=mode)
 
     sources_block = "\n".join(
         f"[{i + 1}] {s.title} ({s.source_type}, trust: {s.trust_score:.2f})\n{s.snippet}"
@@ -161,20 +152,21 @@ async def run_writer(state: ResearchState) -> dict:
     )
     sub_q_block = "\n".join(f"- {q}" for q in sub_questions)
 
-    report_messages = [
-        SystemMessage(content=_REPORT_SYSTEM),
-        HumanMessage(
-            content=(
-                f"Research query: {query}\n\n"
-                f"Sub-questions:\n{sub_q_block}\n\n"
-                f"Sources:\n{sources_block}"
-            )
-        ),
-    ]
-
     try:
-        report_response = await writer_llm.ainvoke(report_messages)
-        report = report_response.content.strip()
+        report = await router.call(
+            "synthesis",
+            [
+                SystemMessage(content=_REPORT_SYSTEM),
+                HumanMessage(
+                    content=(
+                        f"Research query: {query}\n\n"
+                        f"Sub-questions:\n{sub_q_block}\n\n"
+                        f"Sources:\n{sources_block}"
+                    )
+                ),
+            ],
+            temperature=0.3,
+        )
     except Exception as exc:
         report = f"# {query}\n\n*Report generation failed: {exc}*"
 
@@ -186,7 +178,7 @@ async def run_writer(state: ResearchState) -> dict:
     events.append(drafted)
     await push_event(session_id, drafted.model_dump(mode="json"))
 
-    knowledge_nodes, knowledge_edges = await _extract_knowledge_graph(report, extractor_llm)
+    knowledge_nodes, knowledge_edges = await _extract_knowledge_graph(report, router)
 
     complete = AgentEvent(
         agent_name="Writer",
