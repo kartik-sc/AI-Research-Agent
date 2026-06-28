@@ -1,8 +1,8 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { Search, Zap, Layers, GraduationCap, ArrowRight, RotateCcw } from "lucide-react";
+import { Search, Zap, Layers, GraduationCap, ArrowRight, RotateCcw, Loader2 } from "lucide-react";
 import { useResearchStore } from "@/lib/store";
 import type { ResearchMode } from "@/lib/types";
 
@@ -24,12 +24,37 @@ const EXAMPLES = [
   "Latest diffusion model architectures",
 ];
 
-// ── Hero mode (empty state) ─────────────────────────────────────────────────
+// Border class per mode
+function modeFormClass(mode: ResearchMode): string {
+  if (mode === "deep")     return "deep-mode-glow";
+  if (mode === "academic") return "ring-1 ring-teal-500/40 rounded-xl";
+  return "";
+}
+
+function modeInnerBorder(mode: ResearchMode): string {
+  if (mode === "deep")     return "border-transparent bg-card";
+  if (mode === "academic") return "border-teal-500/30 bg-card";
+  return "border-border bg-card";
+}
+
+// ── Hero mode ──────────────────────────────────────────────────────────────
 
 export function HeroSearch() {
   const { query, mode, setQuery, setMode, startResearch, status } = useResearchStore();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isLoading = status === "running";
+
+  // Cmd/Ctrl+K focuses the search bar
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        textareaRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,30 +73,36 @@ export function HeroSearch() {
         <p className="text-sm text-muted-foreground">The AI research workspace</p>
       </div>
 
-      {/* Search input */}
+      {/* Search input — wrapped for gradient border effect */}
       <form onSubmit={handleSubmit} className="w-full">
-        <div className="relative flex items-end gap-2 rounded-xl border border-border bg-card px-4 py-3 shadow-lg transition-colors focus-within:border-ring">
-          <Search className="mb-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground" />
-          <textarea
-            ref={textareaRef}
-            className="flex-1 resize-none bg-transparent text-sm leading-relaxed outline-none placeholder:text-muted-foreground"
-            placeholder="Ask anything to research deeply…"
-            rows={2}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSubmit(e); }
-            }}
-            disabled={isLoading}
-            autoFocus
-          />
-          <button
-            type="submit"
-            disabled={!query.trim() || isLoading}
-            className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-opacity disabled:opacity-40 hover:opacity-90"
-          >
-            <ArrowRight className="h-4 w-4" />
-          </button>
+        <div className={modeFormClass(mode)}>
+          <div className={`relative flex items-end gap-2 rounded-xl border px-4 py-3 shadow-lg transition-colors focus-within:border-ring ${modeInnerBorder(mode)}`}>
+            <Search className="mb-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground" />
+            <textarea
+              ref={textareaRef}
+              className="flex-1 resize-none bg-transparent text-sm leading-relaxed outline-none placeholder:text-muted-foreground"
+              placeholder="Ask anything to research deeply…"
+              rows={2}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSubmit(e); }
+                if (e.key === "Escape") setQuery("");
+              }}
+              disabled={isLoading}
+              autoFocus
+            />
+            <button
+              type="submit"
+              disabled={!query.trim() || isLoading}
+              className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-opacity disabled:opacity-40 hover:opacity-90"
+            >
+              {isLoading
+                ? <Loader2 className="h-4 w-4 animate-spin" />
+                : <ArrowRight className="h-4 w-4" />
+              }
+            </button>
+          </div>
         </div>
       </form>
 
@@ -108,15 +139,29 @@ export function HeroSearch() {
           </button>
         ))}
       </div>
+
+      <p className="text-[10px] text-muted-foreground/40">⌘K to focus · Enter to search · Esc to clear</p>
     </div>
   );
 }
 
-// ── Compact mode (active state) ─────────────────────────────────────────────
+// ── Compact mode ───────────────────────────────────────────────────────────
 
 export function CompactSearch() {
-  const { query, setQuery, startResearch, resetResearch, status } = useResearchStore();
+  const { query, mode, setQuery, startResearch, resetResearch, status } = useResearchStore();
+  const inputRef = useRef<HTMLInputElement>(null);
   const isLoading = status === "running";
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        inputRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -129,12 +174,17 @@ export function CompactSearch() {
       onSubmit={handleSubmit}
       className="flex w-full items-center gap-2 border-b border-border bg-background/95 px-4 py-3 backdrop-blur"
     >
-      <Search className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+      {isLoading
+        ? <Loader2 className="h-4 w-4 flex-shrink-0 animate-spin text-primary" />
+        : <Search className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+      }
       <input
+        ref={inputRef}
         className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
         placeholder="New research question…"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
+        onKeyDown={(e) => { if (e.key === "Escape") setQuery(""); }}
         disabled={isLoading}
       />
       <div className="flex items-center gap-2">
@@ -153,7 +203,10 @@ export function CompactSearch() {
           disabled={!query.trim() || isLoading}
           className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-opacity disabled:opacity-40 hover:opacity-90"
         >
-          <ArrowRight className="h-3.5 w-3.5" />
+          {isLoading
+            ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            : <ArrowRight className="h-3.5 w-3.5" />
+          }
         </button>
       </div>
     </form>

@@ -9,14 +9,9 @@ interface FollowUpSuggestionsProps {
 }
 
 export function FollowUpSuggestions({ suggestions }: FollowUpSuggestionsProps) {
-  const { setQuery, startResearch } = useResearchStore();
+  const { startFollowUp } = useResearchStore();
 
   if (suggestions.length === 0) return null;
-
-  const handleClick = (q: string) => {
-    setQuery(q);
-    startResearch();
-  };
 
   return (
     <div className="pb-10">
@@ -34,7 +29,7 @@ export function FollowUpSuggestions({ suggestions }: FollowUpSuggestionsProps) {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.22, delay: 0.08 * i }}
-            onClick={() => handleClick(q)}
+            onClick={() => startFollowUp(q)}
             className="rounded-full border border-border bg-muted/40 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-ring hover:bg-accent hover:text-foreground"
           >
             {q}

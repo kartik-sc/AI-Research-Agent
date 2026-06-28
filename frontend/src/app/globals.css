@@ -48,6 +48,43 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* Rotating conic-gradient border for deep research mode */
+@property --border-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes border-spin {
+  to { --border-angle: 360deg; }
+}
+
+.deep-mode-glow {
+  position: relative;
+  border-radius: 0.75rem;
+}
+
+.deep-mode-glow::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: conic-gradient(
+    from var(--border-angle),
+    #7c3aed88,
+    #3b82f688,
+    #06b6d488,
+    #7c3aed88
+  );
+  animation: border-spin 4s linear infinite;
+  z-index: 0;
+}
+
+.deep-mode-glow > * {
+  position: relative;
+  z-index: 1;
+}
+
 @keyframes highlight-flash {
   0%   { border-color: rgba(251,191,36,0.8); box-shadow: 0 0 0 3px rgba(251,191,36,0.2); }
   60%  { border-color: rgba(251,191,36,0.5); box-shadow: 0 0 0 2px rgba(251,191,36,0.1); }

@@ -32,3 +32,7 @@ python-dotenv==1.0.1
 
 # SSE streaming
 sse-starlette==2.1.3
+
+# Export
+weasyprint==62.3
+markdown==3.7

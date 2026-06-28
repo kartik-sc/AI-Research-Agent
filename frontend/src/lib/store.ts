@@ -14,8 +14,14 @@ import type {
   ResearchResponse,
   ResearchStatus,
   SessionSummary,
+  Source,
   SseCompletePayload,
 } from "./types";
+
+export interface ThreadEntry {
+  sessionId: string;
+  query: string;
+}
 
 interface ResearchStore {
   // ── Research state ──────────────────────────────────────
@@ -25,6 +31,9 @@ interface ResearchStore {
   status: ResearchStatus;
   agentEvents: AgentEvent[];
   response: ResearchResponse | null;
+
+  // ── Follow-up thread ─────────────────────────────────────
+  threadHistory: ThreadEntry[];
 
   // ── Session history ──────────────────────────────────────
   sessions: SessionSummary[];
@@ -42,6 +51,7 @@ interface ResearchStore {
   setHighlightedSource: (n: number | null) => void;
 
   startResearch: () => Promise<void>;
+  startFollowUp: (followUpQuery: string) => Promise<void>;
   appendEvent: (e: AgentEvent) => void;
   setComplete: (payload: SseCompletePayload) => void;
   resetResearch: () => void;
@@ -58,6 +68,7 @@ export const useResearchStore = create<ResearchStore>((set, get) => ({
   status: "idle",
   agentEvents: [],
   response: null,
+  threadHistory: [],
   sessions: [],
   activeSessionId: null,
   highlightedSourceIndex: null,
@@ -71,7 +82,6 @@ export const useResearchStore = create<ResearchStore>((set, get) => ({
     const { query, mode, _stopStream } = get();
     if (!query.trim()) return;
 
-    // Close any existing stream
     _stopStream?.();
 
     set({
@@ -112,6 +122,20 @@ export const useResearchStore = create<ResearchStore>((set, get) => ({
     }
   },
 
+  startFollowUp: async (followUpQuery: string) => {
+    const { sessionId, query } = get();
+
+    // Push current session into thread before starting new research
+    if (sessionId && query) {
+      set((s) => ({
+        threadHistory: [...s.threadHistory, { sessionId, query }],
+      }));
+    }
+
+    set({ query: followUpQuery });
+    await get().startResearch();
+  },
+
   appendEvent: (e) =>
     set((s) => ({ agentEvents: [...s.agentEvents, e] })),
 
@@ -126,7 +150,6 @@ export const useResearchStore = create<ResearchStore>((set, get) => ({
       knowledge_edges: payload.knowledge_edges ?? [],
     };
     set({ status: "complete", response, _stopStream: null });
-    // Refresh session history
     get().loadSessions();
   },
 
@@ -139,6 +162,7 @@ export const useResearchStore = create<ResearchStore>((set, get) => ({
       response: null,
       sessionId: null,
       activeSessionId: null,
+      threadHistory: [],
       _stopStream: null,
     });
   },

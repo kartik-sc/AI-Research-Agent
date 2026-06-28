@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { GitHubCard } from "./GitHubCard";
@@ -23,14 +23,40 @@ const FILTER_OPTIONS = [
 ] as const;
 
 type FilterKey = typeof FILTER_OPTIONS[number]["key"];
+type SortKey   = "trust" | "recency" | "relevance";
+
+const SORT_OPTIONS: { key: SortKey; label: string }[] = [
+  { key: "trust",     label: "Trust" },
+  { key: "recency",   label: "Recency" },
+  { key: "relevance", label: "Relevance" },
+];
+
+function sortSources(sources: Source[], sort: SortKey): Source[] {
+  const copy = [...sources];
+  if (sort === "trust") {
+    return copy.sort((a, b) => b.trust_score - a.trust_score);
+  }
+  if (sort === "recency") {
+    return copy.sort((a, b) => {
+      const da = a.published_date ?? "";
+      const db = b.published_date ?? "";
+      return db.localeCompare(da);
+    });
+  }
+  // relevance = original order
+  return copy;
+}
 
 export function SourcesPanel({ sources, isLoading }: SourcesPanelProps) {
   const [activeFilter, setActiveFilter] = useState<FilterKey>("all");
+  const [sortBy, setSortBy] = useState<SortKey>("relevance");
 
-  const filtered =
-    activeFilter === "all"
+  const filtered = useMemo(() => {
+    const base = activeFilter === "all"
       ? sources
       : sources.filter((s) => s.source_type === activeFilter);
+    return sortSources(base, sortBy);
+  }, [sources, activeFilter, sortBy]);
 
   if (isLoading) {
     return (
@@ -57,6 +83,16 @@ export function SourcesPanel({ sources, isLoading }: SourcesPanelProps) {
         <p className="text-xs font-semibold text-foreground">
           Sources <span className="ml-1 text-muted-foreground">({sources.length})</span>
         </p>
+        {/* Sort dropdown */}
+        <select
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value as SortKey)}
+          className="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-[10px] text-muted-foreground outline-none hover:bg-accent cursor-pointer"
+        >
+          {SORT_OPTIONS.map(({ key, label }) => (
+            <option key={key} value={key}>{label}</option>
+          ))}
+        </select>
       </div>
 
       {/* Filter chips — only show filters that have matching sources */}
@@ -87,21 +123,16 @@ export function SourcesPanel({ sources, isLoading }: SourcesPanelProps) {
             </p>
           ) : (
             filtered.map((source) => {
+              // Use index in original (unsorted) list for citation matching
               const originalIndex = sources.indexOf(source) + 1;
 
               if (source.source_type === "github") {
-                return (
-                  <GitHubCard key={source.url} source={source} index={originalIndex} />
-                );
+                return <GitHubCard key={source.url} source={source} index={originalIndex} />;
               }
               if (source.source_type === "huggingface") {
-                return (
-                  <HuggingFaceCard key={source.url} source={source} index={originalIndex} />
-                );
+                return <HuggingFaceCard key={source.url} source={source} index={originalIndex} />;
               }
-              return (
-                <SourceCard key={source.url} source={source} index={originalIndex} />
-              );
+              return <SourceCard key={source.url} source={source} index={originalIndex} />;
             })
           )}
         </div>

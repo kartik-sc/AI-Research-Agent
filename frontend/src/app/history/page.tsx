@@ -67,9 +67,22 @@ export default function HistoryPage() {
                   ))}
                 </div>
               ) : sessions.length === 0 ? (
-                <p className="mt-8 text-center text-sm text-muted-foreground">
-                  {search ? "No sessions match your search" : "No sessions yet"}
-                </p>
+                <div className="mt-12 flex flex-col items-center gap-4 text-center">
+                  <svg viewBox="0 0 80 80" className="h-16 w-16 text-muted-foreground/20" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <circle cx="40" cy="40" r="36" />
+                    <path d="M40 22 L40 42 M40 50 L40 54" strokeLinecap="round" strokeWidth="2.5" />
+                  </svg>
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">
+                      {search ? "No sessions match your search" : "No research yet"}
+                    </p>
+                    {!search && (
+                      <p className="mt-1 text-xs text-muted-foreground/60">
+                        Start your first query from the home page
+                      </p>
+                    )}
+                  </div>
+                </div>
               ) : (
                 <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {sessions.map((s) => (

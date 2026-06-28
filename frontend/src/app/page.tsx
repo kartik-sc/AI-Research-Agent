@@ -6,6 +6,7 @@ import { AgentStream } from "@/components/agent-stream/AgentStream";
 import { ReportHeader } from "@/components/answer/ReportHeader";
 import { ReportRenderer } from "@/components/answer/ReportRenderer";
 import { FollowUpSuggestions } from "@/components/answer/FollowUpSuggestions";
+import { ThreadBreadcrumb } from "@/components/answer/ThreadBreadcrumb";
 import { SourcesPanel } from "@/components/sources/SourcesPanel";
 import { KnowledgeGraph } from "@/components/knowledge-graph/KnowledgeGraph";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -47,6 +48,7 @@ export default function Home() {
             className="flex flex-1 flex-col overflow-hidden"
           >
             <CompactSearch />
+            <ThreadBreadcrumb />
 
             <div className="flex flex-1 overflow-hidden">
 

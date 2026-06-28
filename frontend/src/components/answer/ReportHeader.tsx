@@ -2,8 +2,11 @@
 
 import { useMemo } from "react";
 import { toast } from "sonner";
-import { Copy, FileDown, Link2, RotateCcw, Clock, Zap, Layers, GraduationCap } from "lucide-react";
+import {
+  Copy, FileDown, Link2, RotateCcw, Clock, Zap, Layers, GraduationCap, BookOpen,
+} from "lucide-react";
 import { useResearchStore } from "@/lib/store";
+import { BASE } from "@/lib/api";
 import type { AgentEvent, ResearchMode } from "@/lib/types";
 
 const MODE_META: Record<ResearchMode, { icon: React.ElementType; label: string }> = {
@@ -15,10 +18,9 @@ const MODE_META: Record<ResearchMode, { icon: React.ElementType; label: string }
 function computeDuration(events: AgentEvent[]): string | null {
   if (events.length < 2) return null;
   const first = new Date(events[0].timestamp).getTime();
-  const last = new Date(events[events.length - 1].timestamp).getTime();
-  const ms = last - first;
-  if (ms < 1000) return null;
-  const s = Math.round(ms / 1000);
+  const last  = new Date(events[events.length - 1].timestamp).getTime();
+  const s = Math.round((last - first) / 1000);
+  if (s < 1) return null;
   return s >= 60 ? `${Math.floor(s / 60)}m ${s % 60}s` : `${s}s`;
 }
 
@@ -31,35 +33,57 @@ interface ReportHeaderProps {
 }
 
 export function ReportHeader({ markdown }: ReportHeaderProps) {
-  const { mode, agentEvents, query, startResearch } = useResearchStore();
+  const { mode, agentEvents, query, sessionId, startResearch } = useResearchStore();
 
-  const duration = useMemo(() => computeDuration(agentEvents), [agentEvents]);
+  const duration   = useMemo(() => computeDuration(agentEvents), [agentEvents]);
   const agentCount = useMemo(() => countAgents(agentEvents), [agentEvents]);
-  const ModIcon = MODE_META[mode]?.icon ?? Layers;
-  const modeLabel = MODE_META[mode]?.label ?? mode;
+  const ModIcon    = MODE_META[mode]?.icon ?? Layers;
+  const modeLabel  = MODE_META[mode]?.label ?? mode;
 
-  const copyMarkdown = () => {
-    navigator.clipboard.writeText(markdown);
-    toast.success("Markdown copied to clipboard");
-  };
+  const doExport = async (format: "markdown" | "pdf" | "bibtex") => {
+    if (!sessionId) { toast.error("No session to export"); return; }
 
-  const exportPdf = () => {
-    toast.info("PDF export coming soon");
+    try {
+      const res = await fetch(`${BASE}/api/export/${sessionId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ format }),
+      });
+      if (!res.ok) throw new Error(`Export failed: ${res.status}`);
+
+      if (format === "markdown") {
+        const text = await res.text();
+        await navigator.clipboard.writeText(text);
+        toast.success("Copied to clipboard");
+        return;
+      }
+
+      const blob = await res.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement("a");
+      a.href     = url;
+      a.download = `research.${format === "pdf" ? "pdf" : "bib"}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Export failed");
+    }
   };
 
   const share = () => {
-    const url = `${window.location.origin}?q=${encodeURIComponent(query)}`;
-    navigator.clipboard.writeText(url);
-    toast.success("Link copied to clipboard");
-  };
-
-  const regenerate = () => {
-    startResearch();
+    if (sessionId) {
+      navigator.clipboard.writeText(`${window.location.origin}/research/${sessionId}`);
+    } else {
+      navigator.clipboard.writeText(`${window.location.origin}?q=${encodeURIComponent(query)}`);
+    }
+    toast.success("Link copied");
   };
 
   return (
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
-      {/* Left: breadcrumb */}
+      {/* Left: meta badges */}
       <div className="flex items-center gap-3">
         <span className="flex items-center gap-1.5 rounded-full bg-muted/60 px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
           <ModIcon className="h-3 w-3" />
@@ -83,7 +107,7 @@ export function ReportHeader({ markdown }: ReportHeaderProps) {
       {/* Right: action buttons */}
       <div className="flex items-center gap-1">
         <button
-          onClick={copyMarkdown}
+          onClick={() => doExport("markdown")}
           className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         >
           <Copy className="h-3 w-3" />
@@ -91,12 +115,22 @@ export function ReportHeader({ markdown }: ReportHeaderProps) {
         </button>
 
         <button
-          onClick={exportPdf}
+          onClick={() => doExport("pdf")}
           className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         >
           <FileDown className="h-3 w-3" />
-          Export PDF
+          PDF
         </button>
+
+        {mode === "academic" && (
+          <button
+            onClick={() => doExport("bibtex")}
+            className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <BookOpen className="h-3 w-3" />
+            BibTeX
+          </button>
+        )}
 
         <button
           onClick={share}
@@ -107,7 +141,7 @@ export function ReportHeader({ markdown }: ReportHeaderProps) {
         </button>
 
         <button
-          onClick={regenerate}
+          onClick={startResearch}
           className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         >
           <RotateCcw className="h-3 w-3" />
