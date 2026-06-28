@@ -41,23 +41,34 @@ if not GOOGLE_API_KEY:
 genai.configure(api_key=GOOGLE_API_KEY)
 MODEL = "models/gemini-2.0-flash-exp"
 
+
 PROMPT_TEMPLATE = """
 User Research Query: {query}
 
 You are a research assistant AI. Your task is to deeply understand the user’s query, extract relevant scientific knowledge, and help generate new insights or hypotheses.
 
 Return ONLY valid JSON with these keys:
-{
+{{
   "summary": "<Detailed factual summary of the most relevant knowledge from literature (3–5 sentences)>",
   "keywords": ["kw1", "kw2"],
   "insights": ["<Key finding 1>", "<Key finding 2>"],
   "open_questions": ["<Gap 1>", "<Gap 2>"],
   "possible_hypotheses": ["<Hypothesis 1>", "<Hypothesis 2>"],
   "citations": [
-    {"url": "<url>", "title": "<title>"}
+    {{"url": "<url>", "title": "<title>"}}
   ]
-}
-""".strip()
+}}
+
+If no relevant information is found, return:
+{{
+  "summary": "No relevant information found.",
+  "keywords": [],
+  "insights": [],
+  "open_questions": [],
+  "possible_hypotheses": [],
+  "citations": []
+}}
+"""
 
 # ---------------------------
 # API ENDPOINT
