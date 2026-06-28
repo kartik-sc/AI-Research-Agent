@@ -24,7 +24,7 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 // ── SWR fetcher (attach to useSWR as the second arg) ────────────────────────
-export const swrFetcher = (path: string) => apiFetch<unknown>(path);
+export const swrFetcher = <T>(path: string): Promise<T> => apiFetch<T>(path);
 
 // ── Research ─────────────────────────────────────────────────────────────────
 
