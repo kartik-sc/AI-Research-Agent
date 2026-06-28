@@ -59,6 +59,31 @@ export interface SessionSummary {
   status: string;
   created_at: string;
   source_count: number;
+  duration_seconds?: number;
+  project_id?: string | null;
+}
+
+export interface SessionDetail extends ResearchResponse {
+  query: string;
+  mode: ResearchMode;
+  created_at: string;
+  completed_at?: string | null;
+  duration_seconds?: number | null;
+  project_id?: string | null;
+}
+
+export interface Project {
+  id: string;
+  name: string;
+  description?: string | null;
+  color: string;
+  icon: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProjectSummary extends Project {
+  session_count: number;
 }
 
 // Raw SSE payload shapes

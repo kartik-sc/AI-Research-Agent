@@ -145,10 +145,14 @@ async def _run_graph(session_id: str, initial_state: ResearchState) -> None:
         knowledge_nodes: list[KnowledgeNode] = final_state.get("knowledge_nodes") or []
         knowledge_edges: list[KnowledgeEdge] = final_state.get("knowledge_edges") or []
 
+        agent_events: list[AgentEvent] = final_state.get("agent_events") or []
+        completed_at = datetime.utcnow()
+
         # Persist to PostgreSQL
         async with SessionLocal() as db:
             record = await db.get(ResearchSession, session_id)
             if record:
+                duration = int((completed_at - record.created_at).total_seconds())
                 record.status = "complete"
                 record.report = report
                 record.sources_json = json.dumps(
@@ -161,7 +165,11 @@ async def _run_graph(session_id: str, initial_state: ResearchState) -> None:
                 record.knowledge_edges_json = json.dumps(
                     [e.model_dump() for e in knowledge_edges], default=str
                 )
-                record.completed_at = datetime.utcnow()
+                record.agent_events_json = json.dumps(
+                    [e.model_dump(mode="json") for e in agent_events], default=str
+                )
+                record.completed_at = completed_at
+                record.duration_seconds = duration
                 await db.commit()
 
         await mark_complete(

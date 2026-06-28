@@ -1,13 +1,15 @@
 import type {
   AgentEvent,
+  ProjectSummary,
   ResearchRequest,
   ResearchResponse,
+  SessionDetail,
   SessionSummary,
   SseCompletePayload,
   SsePayload,
 } from "./types";
 
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+export const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
@@ -21,6 +23,11 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+// ── SWR fetcher (attach to useSWR as the second arg) ────────────────────────
+export const swrFetcher = (path: string) => apiFetch<unknown>(path);
+
+// ── Research ─────────────────────────────────────────────────────────────────
+
 export async function startResearch(
   req: ResearchRequest
 ): Promise<{ session_id: string; status: string }> {
@@ -31,22 +38,61 @@ export async function getResult(sessionId: string): Promise<ResearchResponse> {
   return apiFetch(`/api/research/${sessionId}/result`);
 }
 
-export async function listSessions(): Promise<SessionSummary[]> {
-  return apiFetch("/api/sessions");
+// ── Sessions ─────────────────────────────────────────────────────────────────
+
+export async function listSessions(params?: {
+  limit?: number;
+  offset?: number;
+  project_id?: string;
+  search?: string;
+}): Promise<SessionSummary[]> {
+  const q = new URLSearchParams();
+  if (params?.limit) q.set("limit", String(params.limit));
+  if (params?.offset) q.set("offset", String(params.offset));
+  if (params?.project_id) q.set("project_id", params.project_id);
+  if (params?.search) q.set("search", params.search);
+  return apiFetch(`/api/sessions?${q.toString()}`);
+}
+
+export async function getSession(sessionId: string): Promise<SessionDetail> {
+  return apiFetch(`/api/sessions/${sessionId}`);
 }
 
 export async function deleteSession(sessionId: string): Promise<void> {
   await apiFetch(`/api/sessions/${sessionId}`, { method: "DELETE" });
 }
 
-/**
- * Opens an SSE connection to the research stream.
- * Returns a cleanup function that closes the EventSource.
- *
- * The backend emits two kinds of events:
- *   - Agent events: {agent_name, event_type, message, timestamp}
- *   - Terminal events: {type: "complete"|"error", ...}
- */
+export async function assignProject(
+  sessionId: string,
+  projectId: string | null
+): Promise<SessionSummary> {
+  return apiFetch(`/api/sessions/${sessionId}/project`, {
+    method: "PATCH",
+    body: JSON.stringify({ project_id: projectId }),
+  });
+}
+
+// ── Projects ─────────────────────────────────────────────────────────────────
+
+export async function listProjects(): Promise<ProjectSummary[]> {
+  return apiFetch("/api/projects");
+}
+
+export async function createProject(body: {
+  name: string;
+  description?: string;
+  color: string;
+  icon: string;
+}): Promise<ProjectSummary> {
+  return apiFetch("/api/projects", { method: "POST", body: JSON.stringify(body) });
+}
+
+export async function deleteProject(projectId: string): Promise<void> {
+  await apiFetch(`/api/projects/${projectId}`, { method: "DELETE" });
+}
+
+// ── SSE stream ────────────────────────────────────────────────────────────────
+
 export function streamResearch(
   sessionId: string,
   onEvent: (event: AgentEvent) => void,
@@ -60,24 +106,21 @@ export function streamResearch(
     try {
       const payload = JSON.parse(e.data) as SsePayload;
 
-      // Terminal complete event
       if ("type" in payload && payload.type === "complete") {
         onComplete(payload as SseCompletePayload);
         source.close();
         return;
       }
 
-      // Terminal error event
       if ("type" in payload && payload.type === "error") {
         onError((payload as { type: "error"; message: string }).message);
         source.close();
         return;
       }
 
-      // Regular agent event
       onEvent(payload as AgentEvent);
     } catch {
-      // Ignore malformed frames
+      // ignore malformed frames
     }
   };
 
