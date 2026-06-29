@@ -12,8 +12,8 @@ class Settings(BaseSettings):
     github_token: str = ""
 
     # Model routing
-    planner_model: str = "gemini-1.5-pro"
-    researcher_model: str = "gemini-1.5-flash"
+    PLANNER_MODEL: str = "gemini-2.5-pro"
+    RESEARCHER_MODEL: str = "gemini-2.5-flash"
 
     # Database — Railway provides postgresql:// which needs the asyncpg dialect prefix
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/researchos"
