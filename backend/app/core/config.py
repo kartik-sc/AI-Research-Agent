@@ -14,8 +14,8 @@ class Settings(BaseSettings):
     github_token: str = ""
 
     # Model routing
-    PLANNER_MODEL: str = "gemini-2.5-pro"
-    RESEARCHER_MODEL: str = "gemini-2.5-flash"
+    planner_model: str = "gemini-2.5-pro"
+    researcher_model: str = "gemini-2.5-flash"
 
     # Database — Neon/Railway provide postgresql:// which needs the asyncpg dialect prefix
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/researchos"
