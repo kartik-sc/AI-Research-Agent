@@ -40,9 +40,13 @@ class Settings(BaseSettings):
     def _fix_db_url(cls, v: object) -> object:
         if isinstance(v, str):
             if v.startswith("postgres://"):
-                return "postgresql+asyncpg://" + v[len("postgres://"):]
-            if v.startswith("postgresql://"):
-                return "postgresql+asyncpg://" + v[len("postgresql://"):]
+                v = "postgresql+asyncpg://" + v[len("postgres://"):]
+            elif v.startswith("postgresql://"):
+                v = "postgresql+asyncpg://" + v[len("postgresql://"):]
+            # asyncpg uses ssl= not sslmode= (psycopg2 convention)
+            v = v.replace("sslmode=require", "ssl=require")
+            v = v.replace("sslmode=verify-full", "ssl=verify-full")
+            v = v.replace("sslmode=disable", "ssl=disable")
         return v
 
     def get_cors_origins(self) -> list[str]:
