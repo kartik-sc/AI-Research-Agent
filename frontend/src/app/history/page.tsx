@@ -17,7 +17,7 @@ const grid = {
 
 const card = {
   hidden: { opacity: 0, y: 14 },
-  show:   { opacity: 1, y: 0, transition: { duration: 0.28, ease: "easeOut" } },
+  show:   { opacity: 1, y: 0, transition: { duration: 0.28, ease: "easeOut" as const } },
 };
 
 function buildUrl(mode: string, search: string) {
