@@ -1,3 +1,5 @@
+import json
+
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -15,7 +17,7 @@ class Settings(BaseSettings):
     PLANNER_MODEL: str = "gemini-2.5-pro"
     RESEARCHER_MODEL: str = "gemini-2.5-flash"
 
-    # Database — Railway provides postgresql:// which needs the asyncpg dialect prefix
+    # Database — Neon/Railway provide postgresql:// which needs the asyncpg dialect prefix
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/researchos"
 
     # Redis
@@ -27,7 +29,11 @@ class Settings(BaseSettings):
     # App
     app_name: str = "ResearchOS"
     debug: bool = False
-    cors_origins: list[str] = ["http://localhost:3000"]
+
+    # Kept as str so pydantic-settings never JSON-parses it at source level
+    # (list[str] fields trigger json.loads in the env source, crashing on comma-separated values).
+    # Accepts "a,b,c" or '["a","b"]' formats — parsed via get_cors_origins().
+    cors_origins: str = "http://localhost:3000"
 
     @field_validator("database_url", mode="before")
     @classmethod
@@ -39,16 +45,11 @@ class Settings(BaseSettings):
                 return "postgresql+asyncpg://" + v[len("postgresql://"):]
         return v
 
-    @field_validator("cors_origins", mode="before")
-    @classmethod
-    def _parse_cors(cls, v: object) -> object:
-        if isinstance(v, str):
-            v = v.strip()
-            if v.startswith("["):
-                import json
-                return json.loads(v)
-            return [o.strip() for o in v.split(",") if o.strip()]
-        return v
+    def get_cors_origins(self) -> list[str]:
+        v = self.cors_origins.strip()
+        if v.startswith("["):
+            return json.loads(v)
+        return [o.strip() for o in v.split(",") if o.strip()]
 
 
 settings = Settings()
