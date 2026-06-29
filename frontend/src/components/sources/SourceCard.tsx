@@ -45,15 +45,22 @@ export function SourceCard({ source, index }: SourceCardProps) {
     color: "bg-muted text-muted-foreground",
   };
 
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    e.currentTarget.style.setProperty("--mouse-x", `${e.clientX - rect.left}px`);
+    e.currentTarget.style.setProperty("--mouse-y", `${e.clientY - rect.top}px`);
+  };
+
   return (
     <motion.div
       id={`source-card-${index}`}
-      whileHover={{ scale: 1.01 }}
+      whileHover={{ scale: 1.015, y: -2 }}
       transition={{ type: "spring", stiffness: 400, damping: 30 }}
       onClick={() => window.open(source.url, "_blank", "noopener,noreferrer")}
+      onMouseMove={handleMouseMove}
       className={`
-        group flex cursor-pointer flex-col gap-2 rounded-lg border bg-background p-3 transition-colors
-        hover:border-ring
+        spotlight-card group flex cursor-pointer flex-col gap-2 rounded-lg border bg-background p-3 transition-all
+        hover:border-ring/70 hover:shadow-[0_4px_20px_rgba(0,0,0,0.3)]
         ${isHighlighted ? "animate-highlight border-amber-400/70" : "border-border"}
       `}
       style={isHighlighted ? { boxShadow: "0 0 0 2px rgba(251,191,36,0.25)" } : undefined}

@@ -2,12 +2,23 @@
 
 import { useState } from "react";
 import useSWR from "swr";
+import { motion } from "framer-motion";
 import { Search } from "lucide-react";
 import { HistoryCard } from "@/components/history/HistoryCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { swrFetcher } from "@/lib/api";
 import type { SessionSummary } from "@/lib/types";
+
+const grid = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.07 } },
+};
+
+const card = {
+  hidden: { opacity: 0, y: 14 },
+  show:   { opacity: 1, y: 0, transition: { duration: 0.28, ease: "easeOut" } },
+};
 
 function buildUrl(mode: string, search: string) {
   const q = new URLSearchParams({ limit: "50" });
@@ -84,15 +95,18 @@ export default function HistoryPage() {
                   </div>
                 </div>
               ) : (
-                <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <motion.div
+                  variants={grid}
+                  initial="hidden"
+                  animate="show"
+                  className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
+                >
                   {sessions.map((s) => (
-                    <HistoryCard
-                      key={s.session_id}
-                      session={s}
-                      onDeleted={() => mutate()}
-                    />
+                    <motion.div key={s.session_id} variants={card}>
+                      <HistoryCard session={s} onDeleted={() => mutate()} />
+                    </motion.div>
                   ))}
-                </div>
+                </motion.div>
               )}
             </TabsContent>
           ))}

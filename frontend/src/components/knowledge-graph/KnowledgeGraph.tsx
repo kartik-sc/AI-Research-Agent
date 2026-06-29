@@ -21,12 +21,12 @@ interface SimLink extends d3.SimulationLinkDatum<SimNode> {
 }
 
 const NODE_COLORS: Record<string, string> = {
-  concept:   "#7F77DD",
-  person:    "#1D9E75",
-  paper:     "#378ADD",
-  model:     "#D85A30",
-  framework: "#BA7517",
-  dataset:   "#639922",
+  concept:   "#a78bfa",
+  person:    "#34d399",
+  paper:     "#60a5fa",
+  model:     "#fb923c",
+  framework: "#fbbf24",
+  dataset:   "#a3e635",
 };
 
 const LEGEND_TYPES = Object.entries(NODE_COLORS);
@@ -60,6 +60,31 @@ export function KnowledgeGraph({ nodes, edges }: KnowledgeGraphProps) {
       .attr("height", height);
 
     svg.selectAll("*").remove();
+
+    // ── SVG defs: glow filter + dot-grid pattern ──────────────────────────
+    const defs = svg.append("defs");
+
+    const filter = defs.append("filter")
+      .attr("id", "node-glow")
+      .attr("x", "-60%").attr("y", "-60%")
+      .attr("width", "220%").attr("height", "220%");
+    filter.append("feGaussianBlur")
+      .attr("in", "SourceGraphic").attr("stdDeviation", "4").attr("result", "blur");
+    const feMerge = filter.append("feMerge");
+    feMerge.append("feMergeNode").attr("in", "blur");
+    feMerge.append("feMergeNode").attr("in", "SourceGraphic");
+
+    const pattern = defs.append("pattern")
+      .attr("id", "dot-grid").attr("patternUnits", "userSpaceOnUse")
+      .attr("width", "22").attr("height", "22");
+    pattern.append("circle")
+      .attr("cx", "11").attr("cy", "11").attr("r", "0.85")
+      .attr("fill", "rgba(255,255,255,0.055)");
+
+    // Dot-grid background
+    svg.append("rect")
+      .attr("width", "100%").attr("height", "100%")
+      .attr("fill", "url(#dot-grid)");
 
     // Click empty space → deselect
     svg.on("click", () => {
@@ -113,18 +138,40 @@ export function KnowledgeGraph({ nodes, edges }: KnowledgeGraphProps) {
 
     simulationRef.current = simulation;
 
-    // Edge lines
+    // Hub threshold for rings
+    const hubThreshold = maxDeg * 0.45;
+
+    // Edge lines — colored + animated flow
     const linkSel = g
       .append("g")
       .attr("class", "links")
       .selectAll<SVGLineElement, SimLink>("line")
       .data(simLinks)
       .join("line")
-      .attr("stroke", "var(--color-border, #333)")
-      .attr("stroke-opacity", (d) => 0.3 + d.strength * 0.5)
-      .attr("stroke-width", (d) => 0.5 + d.strength * 1.5);
+      .attr("stroke", (d) => {
+        const srcId = typeof d.source === "object" ? (d.source as SimNode).id : String(d.source);
+        const srcNode = simNodes.find((n) => n.id === srcId);
+        return srcNode ? nodeColor(srcNode.type) : "#666";
+      })
+      .attr("stroke-opacity", (d) => 0.18 + d.strength * 0.28)
+      .attr("stroke-width", (d) => 0.6 + d.strength * 1.2)
+      .classed("graph-edge", true);
 
-    // Node circles
+    // Hub rings (pulse animation via CSS)
+    const ringGroup = g.append("g").attr("class", "rings");
+    simNodes
+      .filter((n) => (degreeMap.get(n.id) ?? 0) >= hubThreshold)
+      .forEach((n) => {
+        ringGroup.append("circle")
+          .datum(n)
+          .attr("r", rScale(degreeMap.get(n.id) ?? 0) + 6)
+          .attr("fill", "none")
+          .attr("stroke", nodeColor(n.type))
+          .attr("stroke-width", 1.5)
+          .classed("hub-ring", true);
+      });
+
+    // Node circles — neon fill + glow filter
     const nodeSel = g
       .append("g")
       .attr("class", "nodes")
@@ -133,8 +180,10 @@ export function KnowledgeGraph({ nodes, edges }: KnowledgeGraphProps) {
       .join("circle")
       .attr("r", (d) => rScale(degreeMap.get(d.id) ?? 0))
       .attr("fill", (d) => nodeColor(d.type))
-      .attr("stroke", "var(--color-background, #000)")
-      .attr("stroke-width", 2)
+      .attr("stroke", (d) => nodeColor(d.type))
+      .attr("stroke-width", 1)
+      .attr("stroke-opacity", 0.5)
+      .attr("filter", "url(#node-glow)")
       .style("cursor", "pointer");
 
     // Labels for high-degree nodes
@@ -163,6 +212,10 @@ export function KnowledgeGraph({ nodes, edges }: KnowledgeGraphProps) {
 
       nodeSel.attr("cx", (d) => d.x!).attr("cy", (d) => d.y!);
       labelSel.attr("x", (d) => d.x!).attr("y", (d) => d.y!);
+
+      ringGroup.selectAll<SVGCircleElement, SimNode>("circle")
+        .attr("cx", (d) => d.x!)
+        .attr("cy", (d) => d.y!);
     });
 
     // Drag behavior
@@ -338,7 +391,7 @@ export function KnowledgeGraph({ nodes, edges }: KnowledgeGraphProps) {
       {/* Graph canvas */}
       <div
         ref={containerRef}
-        className="relative overflow-hidden rounded-xl border border-border bg-card"
+        className="relative overflow-hidden rounded-xl border border-white/[0.07] bg-[#0a0b0e] shadow-[inset_0_0_60px_rgba(0,0,0,0.4)]"
         style={{ height: 500 }}
       >
         <svg ref={svgRef} className="w-full" style={{ display: "block" }} />

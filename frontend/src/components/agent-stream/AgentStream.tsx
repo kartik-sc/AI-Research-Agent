@@ -69,17 +69,17 @@ function CollapsedBadge({
   return (
     <button
       onClick={onExpand}
-      className="flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+      className="flex items-center gap-2 rounded-full border border-white/[0.08] bg-[#0a0c0f] px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-white/[0.05] hover:text-foreground"
     >
       <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
-      <span>{eventCount} events</span>
+      <span className="font-mono">{eventCount} events</span>
       {sourceCount > 0 && (
         <>
           <span className="text-border">·</span>
-          <span>{sourceCount} sources found</span>
+          <span className="font-mono">{sourceCount} sources</span>
         </>
       )}
-      <ChevronDown className="h-3 w-3 opacity-60" />
+      <ChevronDown className="h-3 w-3 opacity-40" />
     </button>
   );
 }
@@ -107,62 +107,53 @@ export function AgentStream({ events, isRunning, sourceCount = 0 }: AgentStreamP
       layout
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-xl border border-border bg-card"
+      className="overflow-hidden rounded-xl border border-white/[0.07] bg-[#0a0c0f]"
     >
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3">
-        <div className="flex items-center gap-2">
-          {isRunning ? (
-            <>
-              <motion.div
-                className="h-2 w-2 rounded-full bg-blue-400"
-                animate={{ opacity: [1, 0.3, 1] }}
-                transition={{ repeat: Infinity, duration: 1.2 }}
-              />
-              <span className="text-xs font-medium text-foreground">Researching…</span>
-            </>
-          ) : (
-            <>
-              <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-              <span className="text-xs font-medium text-foreground">Research complete</span>
-            </>
-          )}
+      {/* Terminal header bar */}
+      <div className="flex items-center justify-between border-b border-white/[0.06] bg-white/[0.02] px-4 py-2.5">
+        <div className="flex items-center gap-3">
+          {/* Traffic light dots */}
+          <div className="flex items-center gap-1.5">
+            <div className="h-2.5 w-2.5 rounded-full bg-red-500/60" />
+            <div className="h-2.5 w-2.5 rounded-full bg-amber-400/60" />
+            <div className={`h-2.5 w-2.5 rounded-full ${isRunning ? "bg-emerald-400" : "bg-emerald-400/40"}`} />
+          </div>
+          <span className="font-mono text-[10px] text-muted-foreground/50">
+            {isRunning ? "agent-pipeline — running" : "agent-pipeline — complete"}
+          </span>
         </div>
 
         {!isRunning && (
           <button
             onClick={() => setExpanded(false)}
-            className="text-muted-foreground transition-colors hover:text-foreground"
+            className="text-muted-foreground/40 transition-colors hover:text-muted-foreground"
           >
-            <ChevronUp className="h-4 w-4" />
+            <ChevronUp className="h-3.5 w-3.5" />
           </button>
         )}
       </div>
 
       {/* Event list */}
-      <ScrollArea className="max-h-52 px-4 pb-3">
-        <div className="space-y-2">
+      <ScrollArea className="max-h-56 px-4 py-3">
+        <div className="space-y-1.5">
           <AnimatePresence initial={false}>
             {events.map((event, i) => {
               const meta = agentMeta(event.agent_name);
               return (
                 <motion.div
                   key={i}
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.18 }}
+                  initial={{ opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.2 }}
                   className="flex items-start gap-2.5"
                 >
-                  {/* Colored dot */}
-                  <div className={`mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full ${meta.dot}`} />
-
                   {/* Agent badge */}
-                  <span className={`mt-0.5 flex-shrink-0 rounded px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-wide ${meta.badge}`}>
+                  <span className={`mt-0.5 flex-shrink-0 rounded px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest ${meta.badge}`}>
                     {event.agent_name}
                   </span>
 
                   {/* Message + source icon */}
-                  <span className="flex-1 text-xs leading-relaxed text-muted-foreground">
+                  <span className="flex-1 font-mono text-[11px] leading-relaxed text-muted-foreground/80">
                     {event.event_type === "action" && (
                       <SourceIcon message={event.message} />
                     )}{" "}
@@ -170,7 +161,7 @@ export function AgentStream({ events, isRunning, sourceCount = 0 }: AgentStreamP
                   </span>
 
                   {/* Timestamp */}
-                  <span className="flex-shrink-0 font-mono text-[9px] text-muted-foreground/40">
+                  <span className="flex-shrink-0 font-mono text-[9px] text-muted-foreground/25">
                     {formatTime(event.timestamp)}
                   </span>
                 </motion.div>
@@ -178,16 +169,17 @@ export function AgentStream({ events, isRunning, sourceCount = 0 }: AgentStreamP
             })}
           </AnimatePresence>
 
-          {/* Pulsing cursor while running */}
+          {/* Blinking cursor while running */}
           {isRunning && (
-            <motion.div
-              className="flex items-center gap-2.5 pl-4"
-              animate={{ opacity: [0.3, 0.8, 0.3] }}
-              transition={{ repeat: Infinity, duration: 1.6 }}
-            >
-              <div className="h-1.5 w-1.5 rounded-full bg-muted-foreground" />
-              <span className="text-xs text-muted-foreground/50">Working…</span>
-            </motion.div>
+            <div className="flex items-center gap-2 pt-1 font-mono text-[11px] text-muted-foreground/40">
+              <span>$</span>
+              <motion.span
+                animate={{ opacity: [1, 0, 1] }}
+                transition={{ repeat: Infinity, duration: 1, ease: "steps(1)" }}
+              >
+                ▋
+              </motion.span>
+            </div>
           )}
         </div>
       </ScrollArea>

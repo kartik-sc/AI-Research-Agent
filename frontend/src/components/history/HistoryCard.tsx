@@ -41,10 +41,17 @@ export function HistoryCard({ session: s, onDeleted }: HistoryCardProps) {
     }
   };
 
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    e.currentTarget.style.setProperty("--mouse-x", `${e.clientX - rect.left}px`);
+    e.currentTarget.style.setProperty("--mouse-y", `${e.clientY - rect.top}px`);
+  };
+
   return (
     <div
       onClick={() => router.push(`/research/${s.session_id}`)}
-      className="group relative flex cursor-pointer flex-col gap-3 rounded-xl border border-border bg-card p-4 transition-colors hover:border-ring hover:bg-accent/30"
+      onMouseMove={handleMouseMove}
+      className="spotlight-card group relative flex cursor-pointer flex-col gap-3 rounded-xl border border-border bg-card p-4 transition-all hover:border-ring/60 hover:shadow-[0_4px_24px_rgba(0,0,0,0.25)] hover:-translate-y-0.5"
     >
       {/* Delete button */}
       <button

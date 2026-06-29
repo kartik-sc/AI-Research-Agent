@@ -32,8 +32,14 @@ export default function Home() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -16 }}
             transition={{ duration: 0.25 }}
-            className="flex flex-1 items-center justify-center p-8"
+            className="relative flex flex-1 items-center justify-center overflow-hidden p-8"
           >
+            {/* Aurora background */}
+            <div className="pointer-events-none absolute inset-0" aria-hidden>
+              <div className="aurora-blob aurora-blob-1" />
+              <div className="aurora-blob aurora-blob-2" />
+              <div className="aurora-blob aurora-blob-3" />
+            </div>
             <HeroSearch />
           </motion.div>
         )}
