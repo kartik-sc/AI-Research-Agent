@@ -91,98 +91,102 @@ export function AgentStream({ events, isRunning, sourceCount = 0 }: AgentStreamP
 
   if (events.length === 0 && !isRunning) return null;
 
-  // Collapsed state (research complete)
-  if (!isRunning && !expanded) {
-    return (
-      <CollapsedBadge
-        eventCount={events.length}
-        sourceCount={sourceCount}
-        onExpand={() => setExpanded(true)}
-      />
-    );
-  }
+  const showCollapsed = !isRunning && !expanded;
+  const showTerminal = isRunning || expanded;
 
   return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: -8 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="overflow-hidden rounded-xl border border-white/[0.07] bg-[#0a0c0f]"
-    >
-      {/* Terminal header bar */}
-      <div className="flex items-center justify-between border-b border-white/[0.06] bg-white/[0.02] px-4 py-2.5">
-        <div className="flex items-center gap-3">
-          {/* Traffic light dots */}
-          <div className="flex items-center gap-1.5">
-            <div className="h-2.5 w-2.5 rounded-full bg-red-500/60" />
-            <div className="h-2.5 w-2.5 rounded-full bg-amber-400/60" />
-            <div className={`h-2.5 w-2.5 rounded-full ${isRunning ? "bg-emerald-400" : "bg-emerald-400/40"}`} />
-          </div>
-          <span className="font-mono text-[10px] text-muted-foreground/50">
-            {isRunning ? "agent-pipeline — running" : "agent-pipeline — complete"}
-          </span>
-        </div>
+    <div>
+      {/* Collapsed pill — only when complete and not expanded */}
+      {showCollapsed && (
+        <CollapsedBadge
+          eventCount={events.length}
+          sourceCount={sourceCount}
+          onExpand={() => setExpanded(true)}
+        />
+      )}
 
-        {!isRunning && (
-          <button
-            onClick={() => setExpanded(false)}
-            className="text-muted-foreground/40 transition-colors hover:text-muted-foreground"
+      {/* Full terminal panel — height-animated so it pushes siblings down */}
+      <AnimatePresence initial={false}>
+        {showTerminal && (
+          <motion.div
+            key="terminal"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.22, ease: "easeInOut" }}
+            style={{ overflow: "hidden" }}
+            className="rounded-xl border border-white/[0.07] bg-[#0a0c0f]"
           >
-            <ChevronUp className="h-3.5 w-3.5" />
-          </button>
-        )}
-      </div>
+            {/* Terminal header bar */}
+            <div className="flex items-center justify-between border-b border-white/[0.06] bg-white/[0.02] px-4 py-2.5">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5">
+                  <div className="h-2.5 w-2.5 rounded-full bg-red-500/60" />
+                  <div className="h-2.5 w-2.5 rounded-full bg-amber-400/60" />
+                  <div className={`h-2.5 w-2.5 rounded-full ${isRunning ? "bg-emerald-400" : "bg-emerald-400/40"}`} />
+                </div>
+                <span className="font-mono text-[10px] text-muted-foreground/50">
+                  {isRunning ? "agent-pipeline — running" : "agent-pipeline — complete"}
+                </span>
+              </div>
 
-      {/* Event list */}
-      <ScrollArea className="max-h-56 px-4 py-3">
-        <div className="space-y-1.5">
-          <AnimatePresence initial={false}>
-            {events.map((event, i) => {
-              const meta = agentMeta(event.agent_name);
-              return (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, x: -8 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="flex items-start gap-2.5"
+              {!isRunning && (
+                <button
+                  onClick={() => setExpanded(false)}
+                  className="text-muted-foreground/40 transition-colors hover:text-muted-foreground"
                 >
-                  {/* Agent badge */}
-                  <span className={`mt-0.5 flex-shrink-0 rounded px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest ${meta.badge}`}>
-                    {event.agent_name}
-                  </span>
-
-                  {/* Message + source icon */}
-                  <span className="flex-1 font-mono text-[11px] leading-relaxed text-muted-foreground/80">
-                    {event.event_type === "action" && (
-                      <SourceIcon message={event.message} />
-                    )}{" "}
-                    {event.message}
-                  </span>
-
-                  {/* Timestamp */}
-                  <span className="flex-shrink-0 font-mono text-[9px] text-muted-foreground/25">
-                    {formatTime(event.timestamp)}
-                  </span>
-                </motion.div>
-              );
-            })}
-          </AnimatePresence>
-
-          {/* Blinking cursor while running */}
-          {isRunning && (
-            <div className="flex items-center gap-2 pt-1 font-mono text-[11px] text-muted-foreground/40">
-              <span>$</span>
-              <motion.span
-                animate={{ opacity: [1, 0, 1] }}
-                transition={{ repeat: Infinity, duration: 1, ease: "steps(1)" }}
-              >
-                ▋
-              </motion.span>
+                  <ChevronUp className="h-3.5 w-3.5" />
+                </button>
+              )}
             </div>
-          )}
-        </div>
-      </ScrollArea>
-    </motion.div>
+
+            {/* Event list */}
+            <ScrollArea className="max-h-56 px-4 py-3">
+              <div className="space-y-1.5">
+                <AnimatePresence initial={false}>
+                  {events.map((event, i) => {
+                    const meta = agentMeta(event.agent_name);
+                    return (
+                      <motion.div
+                        key={i}
+                        initial={{ opacity: 0, x: -8 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="flex items-start gap-2.5"
+                      >
+                        <span className={`mt-0.5 flex-shrink-0 rounded px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest ${meta.badge}`}>
+                          {event.agent_name}
+                        </span>
+                        <span className="flex-1 font-mono text-[11px] leading-relaxed text-muted-foreground/80">
+                          {event.event_type === "action" && (
+                            <SourceIcon message={event.message} />
+                          )}{" "}
+                          {event.message}
+                        </span>
+                        <span className="flex-shrink-0 font-mono text-[9px] text-muted-foreground/25">
+                          {formatTime(event.timestamp)}
+                        </span>
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
+
+                {isRunning && (
+                  <div className="flex items-center gap-2 pt-1 font-mono text-[11px] text-muted-foreground/40">
+                    <span>$</span>
+                    <motion.span
+                      animate={{ opacity: [1, 1, 0, 0, 1] }}
+                      transition={{ repeat: Infinity, duration: 1, times: [0, 0.49, 0.5, 0.99, 1], ease: "linear" as const }}
+                    >
+                      ▋
+                    </motion.span>
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }

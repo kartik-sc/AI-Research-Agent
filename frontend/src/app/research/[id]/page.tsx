@@ -20,6 +20,7 @@ import { ReportRenderer } from "@/components/answer/ReportRenderer";
 import { FollowUpSuggestions } from "@/components/answer/FollowUpSuggestions";
 import { SourcesPanel } from "@/components/sources/SourcesPanel";
 import { KnowledgeGraph } from "@/components/knowledge-graph/KnowledgeGraph";
+import { ResearchTimeline } from "@/components/answer/ResearchTimeline";
 import { swrFetcher, streamResearch, assignProject } from "@/lib/api";
 import type { AgentEvent, ProjectSummary, SessionDetail } from "@/lib/types";
 
@@ -146,12 +147,12 @@ export default function SessionPage() {
             </DropdownMenu>
           </div>
 
-          {/* Running: show live stream */}
-          {isRunning && (
+          {/* Agent log: show while running, and persist as collapsible after complete */}
+          {(isRunning || (isComplete && agentEvents.length > 0)) && (
             <AgentStream
               events={agentEvents}
-              isRunning={true}
-              sourceCount={0}
+              isRunning={isRunning}
+              sourceCount={session.sources?.length ?? 0}
             />
           )}
 
@@ -177,9 +178,7 @@ export default function SessionPage() {
               </TabsContent>
 
               <TabsContent value="timeline">
-                <div className="flex h-64 items-center justify-center rounded-xl border border-border">
-                  <p className="text-sm text-muted-foreground">Timeline — coming soon</p>
-                </div>
+                <ResearchTimeline session={session} />
               </TabsContent>
             </Tabs>
           )}
