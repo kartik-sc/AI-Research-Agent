@@ -7,6 +7,7 @@ import {
   getResult,
   listSessions as apiListSessions,
   deleteSession as apiDeleteSession,
+  assignProject,
 } from "./api";
 import type {
   AgentEvent,
@@ -45,10 +46,14 @@ interface ResearchStore {
   // ── Private: SSE cleanup handle ──────────────────────────
   _stopStream: (() => void) | null;
 
+  // ── Pending project assignment ───────────────────────────
+  pendingProjectId: string | null;
+
   // ── Actions ───────────────────────────────────────────────
   setQuery: (q: string) => void;
   setMode: (m: ResearchMode) => void;
   setHighlightedSource: (n: number | null) => void;
+  setPendingProjectId: (id: string | null) => void;
 
   startResearch: () => Promise<void>;
   startFollowUp: (followUpQuery: string) => Promise<void>;
@@ -73,10 +78,12 @@ export const useResearchStore = create<ResearchStore>((set, get) => ({
   activeSessionId: null,
   highlightedSourceIndex: null,
   _stopStream: null,
+  pendingProjectId: null,
 
   setQuery: (q) => set({ query: q }),
   setMode: (m) => set({ mode: m }),
   setHighlightedSource: (n) => set({ highlightedSourceIndex: n }),
+  setPendingProjectId: (id) => set({ pendingProjectId: id }),
 
   startResearch: async () => {
     const { query, mode, _stopStream } = get();
@@ -111,6 +118,12 @@ export const useResearchStore = create<ResearchStore>((set, get) => ({
       );
 
       set({ sessionId: session_id, activeSessionId: session_id, _stopStream: stop });
+
+      const pending = get().pendingProjectId;
+      if (pending) {
+        try { await assignProject(session_id, pending); } catch { /* ignore */ }
+        set({ pendingProjectId: null });
+      }
     } catch (err) {
       set({ status: "error" });
       get().appendEvent({

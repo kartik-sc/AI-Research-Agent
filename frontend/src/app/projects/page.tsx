@@ -49,7 +49,7 @@ export default function ProjectsPage() {
             {projects.map((p) => (
               <button
                 key={p.id}
-                onClick={() => router.push(`/history?project_id=${p.id}`)}
+                onClick={() => router.push(`/projects/${p.id}`)}
                 className="group flex flex-col gap-3 rounded-xl border border-border bg-card p-5 text-left transition-colors hover:border-ring hover:bg-accent/30"
               >
                 {/* Color swatch + icon */}

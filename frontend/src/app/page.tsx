@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { HeroSearch, CompactSearch } from "@/components/search/SearchBar";
 import { AgentStream } from "@/components/agent-stream/AgentStream";
@@ -13,7 +14,15 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useResearchStore } from "@/lib/store";
 
 export default function Home() {
-  const { status, agentEvents, response } = useResearchStore();
+  const { status, agentEvents, response, setMode } = useResearchStore();
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const stored = window.localStorage.getItem("researchDefaultMode");
+    if (stored === "quick" || stored === "deep" || stored === "academic") {
+      setMode(stored);
+    }
+  }, [setMode]);
 
   const isIdle = status === "idle";
   const isRunning = status === "running";

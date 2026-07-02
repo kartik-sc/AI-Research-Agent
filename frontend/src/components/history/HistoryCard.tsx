@@ -2,15 +2,23 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Clock, FileText, Trash2, Zap, Layers, GraduationCap } from "lucide-react";
+import { Clock, FileText, Trash2, Zap, Layers, GraduationCap, FolderPlus, Check } from "lucide-react";
 import { toast } from "sonner";
-import { deleteSession } from "@/lib/api";
+import { deleteSession, assignProject } from "@/lib/api";
 import { formatRelativeTime, formatDuration } from "@/lib/time";
-import type { SessionSummary } from "@/lib/types";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
+import type { SessionSummary, ProjectSummary } from "@/lib/types";
 
 interface HistoryCardProps {
   session: SessionSummary;
   onDeleted: () => void;
+  onUpdated?: () => void;
+  projects?: ProjectSummary[];
 }
 
 const MODE_META = {
@@ -19,7 +27,7 @@ const MODE_META = {
   academic: { icon: GraduationCap, color: "text-amber-400 bg-amber-400/10", label: "Academic" },
 } as const;
 
-export function HistoryCard({ session: s, onDeleted }: HistoryCardProps) {
+export function HistoryCard({ session: s, onDeleted, onUpdated, projects }: HistoryCardProps) {
   const router = useRouter();
   const [confirming, setConfirming] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -41,6 +49,16 @@ export function HistoryCard({ session: s, onDeleted }: HistoryCardProps) {
     }
   };
 
+  const handleAssign = async (projectId: string | null) => {
+    try {
+      await assignProject(s.session_id, projectId);
+      toast.success(projectId ? "Added to project" : "Removed from project");
+      onUpdated?.();
+    } catch {
+      toast.error("Failed to update project");
+    }
+  };
+
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     e.currentTarget.style.setProperty("--mouse-x", `${e.clientX - rect.left}px`);
@@ -53,19 +71,64 @@ export function HistoryCard({ session: s, onDeleted }: HistoryCardProps) {
       onMouseMove={handleMouseMove}
       className="spotlight-card group relative flex cursor-pointer flex-col gap-3 rounded-xl border border-border bg-card p-4 transition-all hover:border-ring/60 hover:shadow-[0_4px_24px_rgba(0,0,0,0.25)] hover:-translate-y-0.5"
     >
-      {/* Delete button */}
-      <button
-        onClick={handleDelete}
-        disabled={deleting}
-        className={`absolute right-3 top-3 flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-medium opacity-0 transition-all group-hover:opacity-100 ${
-          confirming
-            ? "bg-destructive/15 text-destructive"
-            : "bg-muted text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-        }`}
-      >
-        <Trash2 className="h-3 w-3" />
-        {confirming ? "Confirm?" : ""}
-      </button>
+      {/* Action buttons */}
+      <div className="absolute right-3 top-3 flex items-center gap-1">
+        {projects !== undefined && (
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              onClick={(e) => e.stopPropagation()}
+              className="flex items-center rounded-md bg-muted p-1.5 text-muted-foreground opacity-0 transition-all hover:bg-ring/10 hover:text-foreground group-hover:opacity-100"
+            >
+              <FolderPlus className="h-3 w-3" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {projects.length === 0 ? (
+                <DropdownMenuItem disabled>No projects yet</DropdownMenuItem>
+              ) : (
+                projects.map((p) => (
+                  <DropdownMenuItem
+                    key={p.id}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleAssign(p.id);
+                    }}
+                  >
+                    <span
+                      className="h-2.5 w-2.5 rounded-full"
+                      style={{ backgroundColor: p.color }}
+                    />
+                    <span className="flex-1 truncate">{p.name}</span>
+                    {s.project_id === p.id && <Check className="h-3.5 w-3.5" />}
+                  </DropdownMenuItem>
+                ))
+              )}
+              {s.project_id && (
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleAssign(null);
+                  }}
+                >
+                  Remove from project
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+
+        <button
+          onClick={handleDelete}
+          disabled={deleting}
+          className={`flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-medium opacity-0 transition-all group-hover:opacity-100 ${
+            confirming
+              ? "bg-destructive/15 text-destructive"
+              : "bg-muted text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+          }`}
+        >
+          <Trash2 className="h-3 w-3" />
+          {confirming ? "Confirm?" : ""}
+        </button>
+      </div>
 
       {/* Query */}
       <p className="pr-14 text-sm font-medium leading-snug text-foreground">

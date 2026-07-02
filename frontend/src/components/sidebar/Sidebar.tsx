@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import useSWR, { mutate as globalMutate } from "swr";
 import {
@@ -56,6 +57,7 @@ const ICON_OPTIONS = [
 export function Sidebar() {
   const { theme, setTheme } = useTheme();
   const { resetResearch } = useResearchStore();
+  const router = useRouter();
 
   const [mounted, setMounted] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -113,7 +115,7 @@ export function Sidebar() {
       {/* ── New Research ─────────────────────────── */}
       <div className="px-3 pb-2">
         <button
-          onClick={resetResearch}
+          onClick={() => { resetResearch(); router.push("/"); }}
           className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground transition-opacity hover:opacity-90 active:opacity-80"
         >
           <Plus className="h-3.5 w-3.5" />
@@ -239,7 +241,7 @@ export function Sidebar() {
           {(projects ?? []).slice(0, 5).map((p) => (
             <Link
               key={p.id}
-              href={`/history?project_id=${p.id}`}
+              href={`/projects/${p.id}`}
               className="flex items-center gap-2 rounded-md px-2.5 py-1.5 transition-colors hover:bg-accent"
             >
               <div

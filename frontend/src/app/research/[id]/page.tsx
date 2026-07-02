@@ -22,6 +22,7 @@ import { SourcesPanel } from "@/components/sources/SourcesPanel";
 import { KnowledgeGraph } from "@/components/knowledge-graph/KnowledgeGraph";
 import { ResearchTimeline } from "@/components/answer/ResearchTimeline";
 import { swrFetcher, streamResearch, assignProject } from "@/lib/api";
+import { useResearchStore } from "@/lib/store";
 import type { AgentEvent, ProjectSummary, SessionDetail } from "@/lib/types";
 
 export default function SessionPage() {
@@ -59,6 +60,13 @@ export default function SessionPage() {
       stopStreamRef.current = null;
     };
   }, [id, session?.status, mutate]);
+
+  // Seed the store with this session so follow-ups record it as the thread parent
+  useEffect(() => {
+    if (session && session.status === "complete") {
+      useResearchStore.setState({ sessionId: id, query: session.query });
+    }
+  }, [id, session?.status, session?.query]);
 
   const handleAssignProject = async (projectId: string | null) => {
     try {

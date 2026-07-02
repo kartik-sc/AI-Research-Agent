@@ -8,7 +8,7 @@ import { HistoryCard } from "@/components/history/HistoryCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { swrFetcher } from "@/lib/api";
-import type { SessionSummary } from "@/lib/types";
+import type { SessionSummary, ProjectSummary } from "@/lib/types";
 
 const grid = {
   hidden: {},
@@ -35,6 +35,8 @@ export default function HistoryPage() {
     swrFetcher,
     { keepPreviousData: true }
   );
+
+  const { data: projects } = useSWR<ProjectSummary[]>("/api/projects", swrFetcher);
 
   const sessions = (data ?? []).filter(
     (s) => activeMode === "all" || s.mode === activeMode
@@ -103,7 +105,7 @@ export default function HistoryPage() {
                 >
                   {sessions.map((s) => (
                     <motion.div key={s.session_id} variants={card}>
-                      <HistoryCard session={s} onDeleted={() => mutate()} />
+                      <HistoryCard session={s} onDeleted={() => mutate()} onUpdated={() => mutate()} projects={projects ?? []} />
                     </motion.div>
                   ))}
                 </motion.div>
