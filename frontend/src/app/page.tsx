@@ -7,14 +7,16 @@ import { AgentStream } from "@/components/agent-stream/AgentStream";
 import { ReportHeader } from "@/components/answer/ReportHeader";
 import { ReportRenderer } from "@/components/answer/ReportRenderer";
 import { FollowUpSuggestions } from "@/components/answer/FollowUpSuggestions";
+import { ResearchTimeline } from "@/components/answer/ResearchTimeline";
 import { ThreadBreadcrumb } from "@/components/answer/ThreadBreadcrumb";
 import { SourcesPanel } from "@/components/sources/SourcesPanel";
 import { KnowledgeGraph } from "@/components/knowledge-graph/KnowledgeGraph";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useResearchStore } from "@/lib/store";
+import type { SessionDetail } from "@/lib/types";
 
 export default function Home() {
-  const { status, agentEvents, response, setMode } = useResearchStore();
+  const { status, mode, query, agentEvents, response, setMode } = useResearchStore();
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -28,6 +30,24 @@ export default function Home() {
   const isRunning = status === "running";
   const isComplete = status === "complete";
   const sourceCount = response?.sources.length ?? 0;
+
+  // The timeline component expects a persisted SessionDetail; synthesise one
+  // from the in-memory response plus the streamed agent-event timestamps.
+  const timelineSession: SessionDetail | null = response
+    ? {
+        ...response,
+        query,
+        mode,
+        created_at: agentEvents[0]?.timestamp ?? new Date().toISOString(),
+        completed_at: agentEvents[agentEvents.length - 1]?.timestamp ?? null,
+        duration_seconds:
+          agentEvents.length > 1
+            ? (new Date(agentEvents[agentEvents.length - 1].timestamp).getTime() -
+                new Date(agentEvents[0].timestamp).getTime()) /
+              1000
+            : null,
+      }
+    : null;
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -121,11 +141,15 @@ export default function Home() {
                         </TabsContent>
 
                         <TabsContent value="timeline">
-                          <div className="flex h-64 items-center justify-center rounded-xl border border-border">
-                            <p className="text-sm text-muted-foreground">
-                              Timeline view — coming next sprint
-                            </p>
-                          </div>
+                          {timelineSession ? (
+                            <ResearchTimeline session={timelineSession} />
+                          ) : (
+                            <div className="flex h-64 items-center justify-center rounded-xl border border-border">
+                              <p className="text-sm text-muted-foreground">
+                                Timeline unavailable
+                              </p>
+                            </div>
+                          )}
                         </TabsContent>
                       </Tabs>
 

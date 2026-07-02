@@ -31,15 +31,22 @@ const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: "relevance", label: "Relevance" },
 ];
 
-function sortSources(sources: Source[], sort: SortKey): Source[] {
-  const copy = [...sources];
+// Each source carries its citation number (position in the original,
+// de-duplicated list) so sorting/filtering never desyncs the [n] references.
+interface RankedSource {
+  source: Source;
+  citationIndex: number;
+}
+
+function sortRanked(items: RankedSource[], sort: SortKey): RankedSource[] {
+  const copy = [...items];
   if (sort === "trust") {
-    return copy.sort((a, b) => b.trust_score - a.trust_score);
+    return copy.sort((a, b) => b.source.trust_score - a.source.trust_score);
   }
   if (sort === "recency") {
     return copy.sort((a, b) => {
-      const da = a.published_date ?? "";
-      const db = b.published_date ?? "";
+      const da = a.source.published_date ?? "";
+      const db = b.source.published_date ?? "";
       return db.localeCompare(da);
     });
   }
@@ -51,12 +58,27 @@ export function SourcesPanel({ sources, isLoading }: SourcesPanelProps) {
   const [activeFilter, setActiveFilter] = useState<FilterKey>("all");
   const [sortBy, setSortBy] = useState<SortKey>("relevance");
 
+  // De-duplicate by URL once. The backend can occasionally emit repeated
+  // URLs; without this, duplicate React keys break list reconciliation and
+  // the filter/sort controls silently stop updating the DOM.
+  const ranked = useMemo<RankedSource[]>(() => {
+    const seen = new Set<string>();
+    const out: RankedSource[] = [];
+    sources.forEach((source) => {
+      const key = source.url || `${source.title}:${out.length}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      out.push({ source, citationIndex: out.length + 1 });
+    });
+    return out;
+  }, [sources]);
+
   const filtered = useMemo(() => {
     const base = activeFilter === "all"
-      ? sources
-      : sources.filter((s) => s.source_type === activeFilter);
-    return sortSources(base, sortBy);
-  }, [sources, activeFilter, sortBy]);
+      ? ranked
+      : ranked.filter((r) => r.source.source_type === activeFilter);
+    return sortRanked(base, sortBy);
+  }, [ranked, activeFilter, sortBy]);
 
   if (isLoading) {
     return (
@@ -81,7 +103,7 @@ export function SourcesPanel({ sources, isLoading }: SourcesPanelProps) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <p className="text-xs font-semibold text-foreground">
-          Sources <span className="ml-1 text-muted-foreground">({sources.length})</span>
+          Sources <span className="ml-1 text-muted-foreground">({ranked.length})</span>
         </p>
         {/* Sort dropdown */}
         <select
@@ -98,7 +120,7 @@ export function SourcesPanel({ sources, isLoading }: SourcesPanelProps) {
       {/* Filter chips — only show filters that have matching sources */}
       <div className="flex flex-wrap gap-1.5">
         {FILTER_OPTIONS.filter(
-          ({ key }) => key === "all" || sources.some((s) => s.source_type === key)
+          ({ key }) => key === "all" || ranked.some((r) => r.source.source_type === key)
         ).map(({ key, label }) => (
           <button
             key={key}
@@ -122,17 +144,17 @@ export function SourcesPanel({ sources, isLoading }: SourcesPanelProps) {
               No {activeFilter} sources
             </p>
           ) : (
-            filtered.map((source) => {
-              // Use index in original (unsorted) list for citation matching
-              const originalIndex = sources.indexOf(source) + 1;
+            filtered.map(({ source, citationIndex }) => {
+              // Stable, unique key even if two sources share a URL.
+              const key = `${source.url}#${citationIndex}`;
 
               if (source.source_type === "github") {
-                return <GitHubCard key={source.url} source={source} index={originalIndex} />;
+                return <GitHubCard key={key} source={source} index={citationIndex} />;
               }
               if (source.source_type === "huggingface") {
-                return <HuggingFaceCard key={source.url} source={source} index={originalIndex} />;
+                return <HuggingFaceCard key={key} source={source} index={citationIndex} />;
               }
-              return <SourceCard key={source.url} source={source} index={originalIndex} />;
+              return <SourceCard key={key} source={source} index={citationIndex} />;
             })
           )}
         </div>

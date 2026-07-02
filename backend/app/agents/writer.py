@@ -29,14 +29,11 @@ Answer with inline citations like [1], [2]. Be specific and factual.
 1. First unanswered question
 2. ...up to 5 items
 
-## Sources
-[1] Title — URL
-[2] Title — URL
-...
-
 Rules:
 - Every factual claim must have at least one citation
-- Citation numbers map to the numbered sources list
+- Citation numbers [n] map to the numbered sources you were given
+- Do NOT write a "Sources" section — it is appended automatically
+- Never invent URLs or citation numbers beyond those provided
 - Flag contradictions between sources where found
 - Write in clear, technical prose"""
 
@@ -146,9 +143,10 @@ async def run_writer(state: ResearchState) -> dict:
 
     router = ModelRouter(mode=mode)
 
+    cited = sources[:30]
     sources_block = "\n".join(
-        f"[{i + 1}] {s.title} ({s.source_type}, trust: {s.trust_score:.2f})\n{s.snippet}"
-        for i, s in enumerate(sources[:30])
+        f"[{i + 1}] {s.title} ({s.source_type}, trust: {s.trust_score:.2f}) — {s.url}\n{s.snippet}"
+        for i, s in enumerate(cited)
     )
     sub_q_block = "\n".join(f"- {q}" for q in sub_questions)
 
@@ -169,6 +167,14 @@ async def run_writer(state: ResearchState) -> dict:
         )
     except Exception as exc:
         report = f"# {query}\n\n*Report generation failed: {exc}*"
+
+    # Append the Sources section deterministically from real source URLs so
+    # citation numbers and links always match the Sources panel exactly.
+    if cited:
+        sources_md = "\n".join(
+            f"[{i + 1}] {s.title} — {s.url}" for i, s in enumerate(cited)
+        )
+        report = f"{report.rstrip()}\n\n## Sources\n{sources_md}\n"
 
     drafted = AgentEvent(
         agent_name="Writer",
